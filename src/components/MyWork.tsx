@@ -392,9 +392,20 @@ const ActivityBtn = ({
 
 const MENU = ["File", "Edit", "Selection", "View", "Go", "Run", "..."];
 
+/* ─── Decorative workspace files (root level, not project pages) ─── */
+const WORKSPACE_FILES: { name: string; ext: string }[] = [
+  { name: "README.md", ext: "md" },
+  { name: "package.json", ext: "json" },
+  { name: "tailwind.config.ts", ext: "ts" },
+  { name: "next.config.ts", ext: "ts" },
+  { name: ".gitignore", ext: "" },
+];
+
 export default function MyWork() {
   const [active, setActive] = useState(0);
   const [tabs, setTabs] = useState<number[]>([0]);
+  const [portfolioOpen, setPortfolioOpen] = useState(true);
+  const [projectsOpen, setProjectsOpen] = useState(true);
   const editorRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
@@ -404,6 +415,21 @@ export default function MyWork() {
     setActive(i);
     setTabs((prev) => (prev.includes(i) ? prev : [...prev, i].slice(-4)));
   }, []);
+
+  const closeTab = useCallback(
+    (tabIdx: number) => {
+      setTabs((prev) => {
+        const filtered = prev.filter((t) => t !== tabIdx);
+        // If we closed the active tab, jump to a neighbor (the one now at the same position).
+        if (tabIdx === active && filtered.length > 0) {
+          const pos = prev.indexOf(tabIdx);
+          setActive(filtered[Math.min(pos, filtered.length - 1)]);
+        }
+        return filtered;
+      });
+    },
+    [active]
+  );
 
   const next = useCallback(
     () => open((active + 1) % projects.length),
@@ -593,48 +619,93 @@ export default function MyWork() {
                 <span className="text-white/40">⋯</span>
               </div>
 
-              <div className="px-3 pb-1.5 flex items-center gap-1 text-[11px] font-semibold text-white/85 uppercase">
-                <span className="text-white/65">{Icon.chevron}</span>
+              {/* Portfolio root — collapsible */}
+              <button
+                onClick={() => setPortfolioOpen((v) => !v)}
+                className="w-full px-3 pb-1.5 flex items-center gap-1 text-[11px] font-semibold text-white/85 uppercase hover:bg-white/[0.04] rounded-sm"
+              >
+                <span
+                  className={`text-white/65 transition-transform duration-150 ${
+                    portfolioOpen ? "rotate-90" : ""
+                  }`}
+                >
+                  {Icon.chevron}
+                </span>
                 <span className="truncate">Portfolio</span>
-              </div>
+              </button>
 
-              <div className="px-3 pb-1.5 flex items-center gap-1 text-[11.5px] text-white/75">
-                <span className="text-white/55 rotate-90">{Icon.chevron}</span>
-                {Icon.folder}
-                <span className="truncate">projects</span>
-              </div>
-
-              <div className="px-2 flex flex-col">
-                {projects.map((proj, i) => {
-                  const isActive = i === active;
-                  return (
-                    <button
-                      key={proj.fileName}
-                      onClick={() => open(i)}
-                      className={`group flex items-center gap-2 pl-7 pr-2 py-1 text-[12px] rounded-sm cursor-pointer text-left transition-colors duration-150 ${
-                        isActive
-                          ? "bg-[#37373d] text-white"
-                          : "text-white/75 hover:bg-white/[0.06]"
+              {portfolioOpen && (
+                <>
+                  {/* projects/ folder — collapsible */}
+                  <button
+                    onClick={() => setProjectsOpen((v) => !v)}
+                    className="w-full px-3 pb-1.5 flex items-center gap-1 text-[11.5px] text-white/75 hover:bg-white/[0.04] hover:text-white rounded-sm"
+                  >
+                    <span
+                      className={`text-white/55 transition-transform duration-150 ${
+                        projectsOpen ? "rotate-90" : ""
                       }`}
                     >
-                      <span
-                        className="inline-block w-2.5 h-2.5 rounded-[2px] shrink-0"
-                        style={{ backgroundColor: extColor[proj.fileExt] ?? "#888" }}
-                      />
-                      <span className="truncate">
-                        {proj.fileName}.{proj.fileExt}
-                      </span>
-                      <span
-                        className={`ml-auto text-[9.5px] font-mono ${
-                          isActive ? "text-[#ff6a00]" : "text-white/30"
-                        }`}
+                      {Icon.chevron}
+                    </span>
+                    {Icon.folder}
+                    <span className="truncate">projects</span>
+                    <span className="ml-auto text-[9px] font-mono text-white/35">
+                      {projects.length}
+                    </span>
+                  </button>
+
+                  {projectsOpen && (
+                    <div className="px-2 flex flex-col">
+                      {projects.map((proj, i) => {
+                        const isActive = i === active;
+                        return (
+                          <button
+                            key={proj.fileName}
+                            onClick={() => open(i)}
+                            className={`group flex items-center gap-2 pl-7 pr-2 py-1 text-[12px] rounded-sm cursor-pointer text-left transition-colors duration-150 ${
+                              isActive
+                                ? "bg-[#37373d] text-white"
+                                : "text-white/75 hover:bg-white/[0.06]"
+                            }`}
+                          >
+                            <span
+                              className="inline-block w-2.5 h-2.5 rounded-[2px] shrink-0"
+                              style={{ backgroundColor: extColor[proj.fileExt] ?? "#888" }}
+                            />
+                            <span className="truncate">
+                              {proj.fileName}.{proj.fileExt}
+                            </span>
+                            <span
+                              className={`ml-auto text-[9.5px] font-mono ${
+                                isActive ? "text-[#ff6a00]" : "text-white/30"
+                              }`}
+                            >
+                              M
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Root-level workspace files — purely decorative */}
+                  <div className="px-2 flex flex-col mt-0.5">
+                    {WORKSPACE_FILES.map((f) => (
+                      <div
+                        key={f.name}
+                        className="group flex items-center gap-2 pl-4 pr-2 py-1 text-[12px] text-white/65 hover:bg-white/[0.04] rounded-sm cursor-default"
                       >
-                        M
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+                        <span
+                          className="inline-block w-2.5 h-2.5 rounded-[2px] shrink-0"
+                          style={{ backgroundColor: extColor[f.ext] ?? "#888" }}
+                        />
+                        <span className="truncate">{f.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
 
               <div className="px-4 pt-5 pb-2 text-[10.5px] font-mono uppercase tracking-[0.18em] text-white/55">
                 Outline
@@ -656,10 +727,12 @@ export default function MyWork() {
                   const t = projects[ti];
                   const isActive = ti === active;
                   return (
-                    <button
+                    <div
                       key={ti}
                       onClick={() => setActive(ti)}
-                      className={`group relative flex items-center gap-2 h-9 px-3 text-[12px] font-mono border-r border-black/50 cursor-pointer whitespace-nowrap transition-colors ${
+                      role="tab"
+                      aria-selected={isActive}
+                      className={`group relative flex items-center gap-2 h-9 pl-3 pr-1.5 text-[12px] font-mono border-r border-black/50 cursor-pointer whitespace-nowrap transition-colors ${
                         isActive
                           ? "bg-[#1e1e1e] text-white"
                           : "bg-[#2d2d2d] text-white/55 hover:text-white/85"
@@ -672,17 +745,48 @@ export default function MyWork() {
                       <span>
                         {t.fileName}.{t.fileExt}
                       </span>
-                      <span
-                        className={`ml-1 text-[10px] ${
-                          isActive ? "text-[#ff6a00]" : "text-white/40"
-                        }`}
-                      >
-                        M
+
+                      {/* Slot: shows "M" by default, switches to clickable × on hover or when active */}
+                      <span className="ml-1 relative w-5 h-5 flex items-center justify-center">
+                        <span
+                          className={`absolute text-[10px] transition-opacity ${
+                            isActive
+                              ? "opacity-0"
+                              : "opacity-100 group-hover:opacity-0 text-white/40"
+                          }`}
+                        >
+                          M
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            closeTab(ti);
+                          }}
+                          aria-label={`Close ${t.fileName}.${t.fileExt}`}
+                          tabIndex={isActive ? 0 : -1}
+                          className={`absolute inset-0 flex items-center justify-center rounded-sm hover:bg-white/15 transition-opacity ${
+                            isActive
+                              ? "opacity-100 text-white/85"
+                              : "opacity-0 group-hover:opacity-100 text-white/70"
+                          }`}
+                        >
+                          <svg
+                            width="10"
+                            height="10"
+                            viewBox="0 0 12 12"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.4"
+                          >
+                            <path d="M2.5 2.5l7 7M9.5 2.5l-7 7" />
+                          </svg>
+                        </button>
                       </span>
+
                       {isActive && (
                         <span className="absolute top-0 left-0 right-0 h-px bg-[#ff6a00]" />
                       )}
-                    </button>
+                    </div>
                   );
                 })}
                 <div className="flex-1" />
@@ -841,8 +945,7 @@ export default function MyWork() {
                     <span className="text-[#ff8c1a]">⟁</span>{" "}
                     <span className="text-[#ff6a00]">{p.fileName}.{p.fileExt}</span>{" "}
                     manifested in the mirror dimension
-                    <span className="text-[#ffb070]/60"> — by the eldritch flame ᚠᚱᚲ</span>
-                  </div>
+                    </div>
                 </div>
               </div>
             </main>
