@@ -470,19 +470,44 @@ export function launchTransition(
         "radial-gradient(ellipse at center, #ffffff 0%, #ffd27a 25%, #ff6a00 55%, #4a0a00 100%)";
       setTimeout(() => {
         push(destination);
-        // Crossfade the vortex overlay out in parallel with World.tsx's
-        // emergence overlay (same gradient, so viewer reads it as ONE fade
-        // from fire-burst → world-revealed instead of a hard cut).
+        // Reset any styles zoomIntoPortal applied to <main> so the destination
+        // page renders into a clean container (otherwise <main> stays at
+        // scale(9), opacity:0, blur(14px) and the new page is invisible).
+        const mainEl = document.querySelector<HTMLElement>("main");
+        if (mainEl) {
+          mainEl.style.transition = "";
+          mainEl.style.transform = "";
+          mainEl.style.filter = "";
+          mainEl.style.opacity = "";
+          mainEl.style.transformOrigin = "";
+          mainEl.style.willChange = "";
+        }
+
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
-            overlay.style.transition = "opacity 1.8s cubic-bezier(0.4,0,0.6,1)";
+            overlay.style.transition = "opacity 1.0s cubic-bezier(0.4,0,0.6,1)";
             overlay.style.opacity = "0";
           });
         });
+
+        // Tear down the vortex scene's GPU resources so it stops competing
+        // with the destination page's WebGL context. (We do NOT call
+        // forceContextLoss() — that has caused the destination Canvas to
+        // receive a null context from the browser. dispose() is enough.)
         setTimeout(() => {
           if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+          scene.traverse((obj) => {
+            const o = obj as THREE.Object3D & {
+              geometry?: THREE.BufferGeometry;
+              material?: THREE.Material | THREE.Material[];
+            };
+            if (o.geometry) o.geometry.dispose();
+            if (Array.isArray(o.material)) o.material.forEach((m) => m.dispose());
+            else if (o.material) o.material.dispose();
+          });
+          scene.clear();
           rend.dispose();
-        }, 2200);
+        }, 1300);
       }, 260);
     }
   };
