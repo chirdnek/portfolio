@@ -392,15 +392,6 @@ const ActivityBtn = ({
 
 const MENU = ["File", "Edit", "Selection", "View", "Go", "Run", "..."];
 
-/* ─── Decorative workspace files (root level, not project pages) ─── */
-const WORKSPACE_FILES: { name: string; ext: string }[] = [
-  { name: "README.md", ext: "md" },
-  { name: "package.json", ext: "json" },
-  { name: "tailwind.config.ts", ext: "ts" },
-  { name: "next.config.ts", ext: "ts" },
-  { name: ".gitignore", ext: "" },
-];
-
 export default function MyWork() {
   const [active, setActive] = useState(0);
   const [tabs, setTabs] = useState<number[]>([0]);
@@ -689,21 +680,6 @@ export default function MyWork() {
                     </div>
                   )}
 
-                  {/* Root-level workspace files — purely decorative */}
-                  <div className="px-2 flex flex-col mt-0.5">
-                    {WORKSPACE_FILES.map((f) => (
-                      <div
-                        key={f.name}
-                        className="group flex items-center gap-2 pl-4 pr-2 py-1 text-[12px] text-white/65 hover:bg-white/[0.04] rounded-sm cursor-default"
-                      >
-                        <span
-                          className="inline-block w-2.5 h-2.5 rounded-[2px] shrink-0"
-                          style={{ backgroundColor: extColor[f.ext] ?? "#888" }}
-                        />
-                        <span className="truncate">{f.name}</span>
-                      </div>
-                    ))}
-                  </div>
                 </>
               )}
 
@@ -980,17 +956,6 @@ export default function MyWork() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Closing rail */}
-      <div className="relative z-10 px-6 sm:px-10 lg:px-16 py-8 border-t border-white/[0.06] flex items-center justify-between">
-        <span className="text-[11px] font-mono text-white/35 tracking-[0.3em] uppercase flex items-center gap-3">
-          <span aria-hidden className="text-[#ff6a00]/40">{Icon.agamotto}</span>
-          <span>Sealed · Section 003 · ᚱᚹ</span>
-        </span>
-        <span className="text-[11px] font-mono text-[#ff6a00]/70 tracking-[0.3em] uppercase">
-          Continue the journey ↓
-        </span>
       </div>
 
       {/* Mystical motion CSS — rotating sigils */}
