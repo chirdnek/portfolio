@@ -6,7 +6,7 @@ import { Cormorant_Garamond, Bebas_Neue } from "next/font/google";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Torus, Float, Environment } from "@react-three/drei";
 import * as THREE from "three";
-import { launchTransition, suckElementsIntoPortal, zoomIntoPortal } from "./PortalGateway";
+import { launchTransition, suckElementsIntoPortal, zoomIntoPortal } from "../effects/PortalGateway";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 3D PORTAL — Three.js ring + ember canvas

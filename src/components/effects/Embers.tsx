@@ -1,13 +1,19 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 
 interface EmberProps {
   count?: number;
 }
 
 export default function Embers({ count = 40 }: EmberProps) {
+  // ⚠ All hooks MUST run on every render in the same order. The early-return
+  // for the /world route used to come BEFORE useMemo — that violated the rules
+  // of hooks when the user navigated between routes, surfacing as a Next.js
+  // "Router action dispatched before initialization" error during transitions.
   const [mounted, setMounted] = useState(false);
+  const pathname = usePathname();
   useEffect(() => { setMounted(true); }, []);
 
   const particles = useMemo(
@@ -24,7 +30,11 @@ export default function Embers({ count = 40 }: EmberProps) {
     [count]
   );
 
+  // ── Conditional renders go AFTER all hook calls ───────────────────────
   if (!mounted) return null;
+  // Skip on the immersive /world route — that scene has its own atmosphere
+  // and the global ember layer competes with it visually.
+  if (pathname?.startsWith("/world")) return null;
 
   return (
     <div

@@ -1,4 +1,4 @@
-import World from "@/components/World";
+import World from "@/components/scenes/World";
 
 export const metadata = {
   title: "World | KENTO_O",

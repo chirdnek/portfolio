@@ -1,11 +1,11 @@
 "use client";
 
-import Hero from "@/components/Hero";
-import IntroSection from "@/components/IntroSection";
-import Technical from "@/components/Technical";
-import MyWork from "@/components/MyWork";
-import MySkills from "@/components/MySkills";
-import Bottom from "@/components/Bottom";
+import Hero from "@/components/sections/Hero";
+import IntroSection from "@/components/sections/IntroSection";
+import Technical from "@/components/sections/Technical";
+import MyWork from "@/components/sections/MyWork";
+import MySkills from "@/components/sections/MySkills";
+import Bottom from "@/components/layout/Bottom";
 
 export default function Home() {
   return (

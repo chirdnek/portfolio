@@ -7,16 +7,16 @@ import {
 } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
-import Navbar from "@/components/Navbar";
-import ScrollAnimations from "@/components/ScrollAnimations";
-import PageTransition from "@/components/PageTransition";
-import PageScaleTransition from "@/components/PageScaleTransition";
-import ScrollProgress from "@/components/ScrollProgress";
-import KENTO_O from "@/components/KENTO_O";
+import Navbar from "@/components/layout/Navbar";
+import ScrollAnimations from "@/components/transitions/ScrollAnimations";
+import PageTransition from "@/components/transitions/PageTransition";
+import PageScaleTransition from "@/components/transitions/PageScaleTransition";
+import ScrollProgress from "@/components/layout/ScrollProgress";
+import KENTO_O from "@/components/transitions/KENTO_O";
 import JsonLd from "@/components/JsonLd";
-import ThemeProvider from "@/components/ThemeProvider";
-import CustomCursor from "@/components/CustomCursor";
-import Embers from "@/components/Embers";
+import ThemeProvider from "@/components/theme/ThemeProvider";
+import CustomCursor from "@/components/transitions/CustomCursor";
+import Embers from "@/components/effects/Embers";
 import ConsoleFilter from "@/components/ConsoleFilter";
 
 const geistSans = Geist({

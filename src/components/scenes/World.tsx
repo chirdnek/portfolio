@@ -17,22 +17,29 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { PointerLockControls } from "@react-three/drei";
+import { PointerLockControls, useTexture } from "@react-three/drei";
 import { EffectComposer, Vignette, Bloom, Noise } from "@react-three/postprocessing";
 import { BlendFunction } from "postprocessing";
 import * as THREE from "three";
 
-/* ─── Disciplined 5-color palette (everything else gets pulled toward this) */
-const PALETTE = {
-  skyTop:    "#2a1338", // deep navy-violet
-  skyMid:    "#a04020", // burnt orange
-  skyHorizon:"#d8a050", // cream-gold
-  stone:     "#7a6a58", // warm grey
-  stoneDark: "#3e2e22", // shadow stone / wood
-  foliage:   "#3a4a28", // muted moss
-  fire:      "#ff7028", // sigil / lantern
-  cream:     "#e8c898", // accents / parchment
-};
+import { PALETTE, LANDMARKS, type Landmark } from "./world/constants";
+import {
+  PLAYER_POS,
+  FLY_STATE,
+  setFly,
+  subscribeFly,
+  gongStrike,
+  setSpellActive,
+  useSpellActive,
+} from "./world/state";
+import {
+  ensureAudioCtx,
+  startAmbientLoop,
+  playDistantBell,
+  setMuted,
+  playDoorCreak,
+  playGongSynth,
+} from "./world/audio";
 
 /* ─── Per-face vertex-color variation — kills "flat plastic Roblox" look.
    Adds subtle brightness shifts to each face of a BoxGeometry. */
@@ -64,9 +71,6 @@ function paintBox(
   g.setAttribute("color", new THREE.BufferAttribute(colors, 3));
   return g;
 }
-
-/* ─── Module-scoped state read by HUD outside the Canvas ───────────────── */
-const PLAYER_POS = new THREE.Vector3();
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * COLLISION SYSTEM
@@ -103,258 +107,217 @@ function Collider({ children }: { children: React.ReactNode }) {
 }
 
 // Reusable scratch instances — zero per-frame allocation in the movement loop
-const COLLISION_DIST = 0.6;       // block when wall is within 0.6 units
-const COLLIDE_RAY_Y_OFFSET = -0.8; // cast from chest height (camera y - 0.8)
+// Bumped from 0.6 → 1.0 so fast/sprint movement (up to ~0.4 units/frame at 30fps)
+// can't clip through a wall between collision checks.
+const COLLISION_DIST = 1.0;
+const COLLIDE_RAY_Y_OFFSET = -0.8;  // cast from chest height (camera y - 0.8)
+const STEP_UP_MAX = 1.3;            // climb anything <= 1.3 units (1 stair = 1.015)
 const _ray = new THREE.Raycaster();
 _ray.far = COLLISION_DIST + 0.05;
-const _origin  = new THREE.Vector3();
-const _dir     = new THREE.Vector3();
-const _forward = new THREE.Vector3();
-const _right   = new THREE.Vector3();
+const _groundRay = new THREE.Raycaster(); // separate ray for vertical (ground/step-up) probes
+_groundRay.far = 14;
+const _origin    = new THREE.Vector3();
+const _dir       = new THREE.Vector3();
+const _forward   = new THREE.Vector3();
+const _right     = new THREE.Vector3();
+const _stepProbe = new THREE.Vector3();
+const _down      = new THREE.Vector3(0, -1, 0);
 
 function isBlocked(origin: THREE.Vector3, dir: THREE.Vector3): boolean {
   _ray.set(origin, dir);
   const hits = _ray.intersectObjects(COLLIDABLES, false);
   return hits.length > 0;
 }
-// Set by Gong component on mount; called by PlayerMovement when E is pressed near it.
-let strikeGong: (() => void) | null = null;
 
+/* Probe straight down from a point ahead of the player to find a steppable
+   surface. Returns the new camera y if the obstacle is short enough to climb,
+   else null. */
+function tryStepUp(camY: number, camX: number, camZ: number, dirX: number, dirZ: number): number | null {
+  _stepProbe.set(camX + dirX * 0.7, (camY - 1.7) + STEP_UP_MAX + 0.2, camZ + dirZ * 0.7);
+  _groundRay.set(_stepProbe, _down);
+  _groundRay.far = STEP_UP_MAX + 0.5;
+  const hits = _groundRay.intersectObjects(COLLIDABLES, false);
+  _groundRay.far = 14;
+  if (hits.length === 0) return null;
+  const stepTop = hits[0].point.y;
+  const currentFootY = camY - 1.7;
+  const stepHeight = stepTop - currentFootY;
+  if (stepHeight > 0 && stepHeight < STEP_UP_MAX) return stepTop + 1.7;
+  return null;
+}
 /* ═══════════════════════════════════════════════════════════════════════════
- * AMBIENT SOUND LAYER — Web Audio synthesis (no asset hosting needed)
- *   • Wind:        bandpass-noise with slow LFO sweep
- *   • Spell hum:   low sine drone with subtle vibrato
- *   • Distant bell: random 22-50s, inharmonic sine partials with long decay
+ * INTERACTION MANAGER — raycast hover + clickable / E-pressable objects
+ *
+ * API surface (drop-in <Interactable> wrapper):
+ *
+ *   <Interactable input="click" label="Ring the gong" onInteract={fn}>
+ *     <Gong />
+ *   </Interactable>
+ *
+ * Reuses _ray + _interactDir + cached mesh array (rebuilt only when the
+ * registry mutates). Throttled to 30 Hz. Tracks hover state via a
+ * subscriber pattern so the HUD prompt can react without polling.
  * ═══════════════════════════════════════════════════════════════════════════ */
-let _audioCtx: AudioContext | null = null;
-let _ambientOn = false;
-let _bellTimeoutId: number | null = null;
-let _masterGain: GainNode | null = null;
-let _muted = false;
+type InteractionInput = "click" | "e" | "f";
 
-function ensureAudioCtx(): AudioContext | null {
-  if (typeof window === "undefined") return null;
-  if (!_audioCtx) {
-    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!Ctx) return null;
-    _audioCtx = new Ctx();
-  }
-  if (_audioCtx.state === "suspended") _audioCtx.resume();
-  return _audioCtx;
-}
-
-function startAmbientLoop() {
-  if (_ambientOn) return;
-  const ctx = ensureAudioCtx();
-  if (!ctx) return;
-  _ambientOn = true;
-
-  _masterGain = ctx.createGain();
-  _masterGain.gain.value = _muted ? 0 : 1;
-  _masterGain.connect(ctx.destination);
-
-  // ── Wind: 4-second white-noise loop, bandpass-filtered with LFO sweep
-  const noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 4, ctx.sampleRate);
-  const data = noiseBuf.getChannelData(0);
-  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
-  const noise = ctx.createBufferSource();
-  noise.buffer = noiseBuf;
-  noise.loop = true;
-
-  const windFilter = ctx.createBiquadFilter();
-  windFilter.type = "bandpass";
-  windFilter.frequency.value = 320;
-  windFilter.Q.value = 0.7;
-
-  const windLfo = ctx.createOscillator();
-  windLfo.type = "sine";
-  windLfo.frequency.value = 0.06;
-  const windLfoGain = ctx.createGain();
-  windLfoGain.gain.value = 200;
-  windLfo.connect(windLfoGain);
-  windLfoGain.connect(windFilter.frequency);
-
-  const windGain = ctx.createGain();
-  windGain.gain.value = 0.05;
-  noise.connect(windFilter);
-  windFilter.connect(windGain);
-  windGain.connect(_masterGain);
-  noise.start();
-  windLfo.start();
-
-  // ── Spell-circle hum: low 80Hz sine with vibrato
-  const hum = ctx.createOscillator();
-  hum.type = "sine";
-  hum.frequency.value = 80;
-  const humLfo = ctx.createOscillator();
-  humLfo.type = "sine";
-  humLfo.frequency.value = 0.3;
-  const humLfoGain = ctx.createGain();
-  humLfoGain.gain.value = 2;
-  humLfo.connect(humLfoGain);
-  humLfoGain.connect(hum.frequency);
-  const humGain = ctx.createGain();
-  humGain.gain.value = 0.035;
-  hum.connect(humGain);
-  humGain.connect(_masterGain);
-  hum.start();
-  humLfo.start();
-
-  // ── Schedule distant temple bells (random 22-50s)
-  const scheduleBell = () => {
-    const delay = 22000 + Math.random() * 28000;
-    _bellTimeoutId = window.setTimeout(() => {
-      playDistantBell();
-      scheduleBell();
-    }, delay);
-  };
-  scheduleBell();
-}
-
-function playDistantBell() {
-  const ctx = ensureAudioCtx();
-  if (!ctx || !_masterGain) return;
-  const now = ctx.currentTime;
-  const partials = [
-    { f: 196, a: 0.13, d: 7.0 },
-    { f: 294, a: 0.07, d: 5.5 },
-    { f: 392, a: 0.05, d: 4.5 },
-    { f: 588, a: 0.03, d: 3.5 },
-    { f: 784, a: 0.02, d: 2.5 },
-  ];
-  const bus = ctx.createGain();
-  bus.gain.value = 0.28;
-  const lp = ctx.createBiquadFilter();
-  lp.type = "lowpass";
-  lp.frequency.value = 1400;
-  bus.connect(lp);
-  lp.connect(_masterGain);
-  partials.forEach((p) => {
-    const osc = ctx.createOscillator();
-    osc.type = "sine";
-    osc.frequency.value = p.f;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, now);
-    g.gain.exponentialRampToValueAtTime(p.a, now + 0.03);
-    g.gain.exponentialRampToValueAtTime(0.0001, now + p.d);
-    osc.connect(g);
-    g.connect(bus);
-    osc.start(now);
-    osc.stop(now + p.d + 0.05);
-  });
-}
-
-function setMuted(muted: boolean) {
-  _muted = muted;
-  if (_masterGain) _masterGain.gain.value = muted ? 0 : 1;
-}
-
-/* ─── Door creak synth — bandpass-filtered sawtooth slide ──────────────── */
-function playDoorCreak() {
-  if (typeof window === "undefined") return;
-  const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-  if (!Ctx) return;
-  const ctx = new Ctx();
-  const now = ctx.currentTime;
-  const osc = ctx.createOscillator();
-  osc.type = "sawtooth";
-  osc.frequency.setValueAtTime(85, now);
-  osc.frequency.exponentialRampToValueAtTime(48, now + 1.5);
-  const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.linearRampToValueAtTime(0.10, now + 0.1);
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.8);
-  const filter = ctx.createBiquadFilter();
-  filter.type = "bandpass";
-  filter.frequency.value = 240;
-  filter.Q.value = 8.5;
-  osc.connect(filter);
-  filter.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start(now);
-  osc.stop(now + 2);
-  setTimeout(() => ctx.close(), 2300);
-}
-
-/* ─── Gong synth — Web Audio, no assets required ────────────────────────── */
-function playGongSynth() {
-  if (typeof window === "undefined") return;
-  const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-  if (!Ctx) return;
-  const ctx = new Ctx();
-  const now = ctx.currentTime;
-  // Inharmonic partials = metallic, gong-like timbre
-  const partials = [
-    { f: 110,  a: 0.42, d: 5.5 },
-    { f: 165,  a: 0.20, d: 4.0 },
-    { f: 220,  a: 0.32, d: 3.8 },
-    { f: 295,  a: 0.16, d: 2.8 },
-    { f: 380,  a: 0.12, d: 2.2 },
-    { f: 510,  a: 0.08, d: 1.6 },
-    { f: 730,  a: 0.05, d: 1.2 },
-  ];
-  const master = ctx.createGain();
-  master.gain.value = 0.55;
-  master.connect(ctx.destination);
-
-  // Subtle low-pass shimmer
-  const lp = ctx.createBiquadFilter();
-  lp.type = "lowpass";
-  lp.frequency.value = 1800;
-  lp.Q.value = 0.4;
-  lp.connect(master);
-
-  partials.forEach((p) => {
-    const osc = ctx.createOscillator();
-    osc.type = "sine";
-    osc.frequency.value = p.f;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, now);
-    g.gain.exponentialRampToValueAtTime(p.a, now + 0.012);
-    g.gain.exponentialRampToValueAtTime(0.0001, now + p.d);
-    osc.connect(g);
-    g.connect(lp);
-    osc.start(now);
-    osc.stop(now + p.d + 0.05);
-  });
-
-  // Stick noise burst at the very start
-  const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.15, ctx.sampleRate);
-  const data = noiseBuffer.getChannelData(0);
-  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.03));
-  const noise = ctx.createBufferSource();
-  noise.buffer = noiseBuffer;
-  const noiseG = ctx.createGain();
-  noiseG.gain.value = 0.18;
-  noise.connect(noiseG);
-  noiseG.connect(lp);
-  noise.start(now);
-
-  setTimeout(() => ctx.close(), 6500);
-}
-
-type Landmark = {
+type InteractionConfig = {
   id: string;
-  pos: [number, number, number];
-  radius: number;
-  name: string;
-  hint: string;
+  label: string;
+  input: InteractionInput;
+  onInteract: () => void;
+  cooldown: number;
 };
 
-const LANDMARKS: Landmark[] = [
-  { id: "torii",    pos: [0, 0, 70],   radius: 8,  name: "Threshold Gate",        hint: "You are entering sacred ground" },
-  { id: "tablet",   pos: [8, 0, 64],   radius: 4,  name: "Vintazk Stone Tablet",  hint: "The seal of the order · carved in the old script" },
-  { id: "altar",    pos: [0, 0, 8],    radius: 6,  name: "Spell Circle",          hint: "Pulses with ancient warmth" },
-  { id: "gong",     pos: [-15, 0, 12], radius: 5,  name: "Bronze Gong",           hint: "Press E to strike · or click the disc" },
-  { id: "pool",     pos: [22, 0, -8],  radius: 6,  name: "Reflecting Pool",       hint: "Lotus and koi · still as glass" },
-  { id: "training", pos: [-22, 0, -8], radius: 6,  name: "Sparring Grounds",      hint: "Posts of polished cypress" },
-  { id: "temple",   pos: [0, 0, -28],  radius: 12, name: "Main Temple",           hint: "Climb the steps · the spires hum" },
-  { id: "sanctum",  pos: [-32, 0, -28],radius: 10, name: "Sanctum Hall",          hint: "Step inside · the library awaits" },
-  { id: "tomes",    pos: [-38, 1, -32],radius: 4,  name: "Project Tomes",         hint: "Barangay Connect · Bose Café · Vintazk" },
-  { id: "relic",    pos: [-26, 1, -32],radius: 3,  name: "Cursed Acer Aspire",    hint: "Water-damaged · still revered" },
-  { id: "throne",   pos: [-32, 1, -42],radius: 4,  name: "The Throne-Desk",       hint: "Where the heroes write their grimoires" },
-  { id: "sigil",    pos: [-32, 0.1, -28], radius: 3, name: "KENTO·O Sigil",        hint: "The seal of the order" },
-];
+const INTERACTABLES = new Map<THREE.Object3D, InteractionConfig>();
+let _interactCache: THREE.Object3D[] = [];
+const _triggerTimes = new Map<string, number>();
+const MAX_INTERACT_DISTANCE = 4.5;
+
+const _activeInteractable: { current: InteractionConfig | null } = { current: null };
+const _activeListeners = new Set<(c: InteractionConfig | null) => void>();
+let _dialogOpen = false;
+
+function _setActive(config: InteractionConfig | null) {
+  if (_activeInteractable.current?.id === config?.id) return;
+  _activeInteractable.current = config;
+  _activeListeners.forEach((fn) => fn(config));
+}
+
+function _rebuildInteractCache() {
+  _interactCache = Array.from(INTERACTABLES.keys());
+}
+
+function tryTriggerActive(input: InteractionInput) {
+  if (_dialogOpen) return;
+  const config = _activeInteractable.current;
+  if (!config || config.input !== input) return;
+  const now = performance.now();
+  const last = _triggerTimes.get(config.id) ?? 0;
+  if (now - last < config.cooldown) return;
+  _triggerTimes.set(config.id, now);
+  config.onInteract();
+}
+
+function useActiveInteractable() {
+  const [active, setActiveState] = useState<InteractionConfig | null>(null);
+  useEffect(() => {
+    const fn = (c: InteractionConfig | null) => setActiveState(c);
+    _activeListeners.add(fn);
+    fn(_activeInteractable.current);
+    return () => { _activeListeners.delete(fn); };
+  }, []);
+  return active;
+}
+
+/* ─── DIALOGUE PANEL state — module-scoped open/close API */
+type DialogueContent = { title: string; body: string; sub?: string; image?: string; liveUrl?: string };
+let _showDialogue: ((c: DialogueContent | null) => void) | null = null;
+
+function openDialogue(content: DialogueContent) {
+  _dialogOpen = true;
+  if (typeof document !== "undefined") document.exitPointerLock?.();
+  _showDialogue?.(content);
+}
+function closeDialogue() {
+  _dialogOpen = false;
+  _showDialogue?.(null);
+}
+
+/* ─── <Interactable> — registers all child meshes for one config */
+let _interactableUid = 0;
+function Interactable({
+  label,
+  input = "click",
+  onInteract,
+  cooldown = 700,
+  children,
+}: {
+  label: string;
+  input?: InteractionInput;
+  onInteract: () => void;
+  cooldown?: number;
+  children: React.ReactNode;
+}) {
+  const ref = useRef<THREE.Group>(null);
+  const cb = useRef(onInteract);
+  cb.current = onInteract;
+
+  useEffect(() => {
+    const g = ref.current;
+    if (!g) return;
+    const config: InteractionConfig = {
+      id: `int-${++_interactableUid}`,
+      label,
+      input,
+      cooldown,
+      onInteract: () => cb.current(),
+    };
+    const added: THREE.Object3D[] = [];
+    g.traverse((obj) => {
+      if ((obj as THREE.Mesh).isMesh) {
+        INTERACTABLES.set(obj, config);
+        added.push(obj);
+      }
+    });
+    _rebuildInteractCache();
+    return () => {
+      added.forEach((o) => INTERACTABLES.delete(o));
+      _rebuildInteractCache();
+      if (_activeInteractable.current?.id === config.id) _setActive(null);
+    };
+  }, [label, input, cooldown]);
+
+  return <group ref={ref}>{children}</group>;
+}
+
+/* ─── <InteractionSystem> — one raycast per 2 frames, central */
+const _interactRay = new THREE.Raycaster();
+_interactRay.far = MAX_INTERACT_DISTANCE;
+const _interactDir = new THREE.Vector3();
+
+function InteractionSystem() {
+  const { camera } = useThree();
+  const tickRef = useRef(0);
+
+  useFrame(() => {
+    tickRef.current = (tickRef.current + 1) % 2; // 30 Hz at 60 fps
+    if (tickRef.current !== 0) return;
+
+    if (_interactCache.length === 0) {
+      if (_activeInteractable.current) _setActive(null);
+      return;
+    }
+    camera.getWorldDirection(_interactDir);
+    _interactRay.set(camera.position, _interactDir);
+    _interactRay.far = MAX_INTERACT_DISTANCE;
+    const hits = _interactRay.intersectObjects(_interactCache, false);
+    if (hits.length > 0) {
+      const config = INTERACTABLES.get(hits[0].object);
+      _setActive(config ?? null);
+    } else {
+      _setActive(null);
+    }
+  });
+
+  useEffect(() => {
+    const onClick = () => tryTriggerActive("click");
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === "KeyE") tryTriggerActive("e");
+      if (e.code === "KeyF") tryTriggerActive("f");
+      if (e.code === "Escape" && _dialogOpen) {
+        closeDialogue();
+      }
+    };
+    window.addEventListener("click", onClick);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("click", onClick);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
+  return null;
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * SKY · SUN · MOUNTAINS · CLOUDS · MIST  (golden-hour palette)
@@ -458,33 +421,65 @@ function Mountains() {
 }
 
 function Clouds() {
+  // Load the puff PNG once and reuse on every cloud sprite
+  const tex = useTexture("/images/clouds.png");
+  useEffect(() => {
+    if (tex) {
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.minFilter = THREE.LinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      tex.generateMipmaps = false;
+      tex.needsUpdate = true;
+    }
+  }, [tex]);
+
   const clouds = useMemo(() => {
     let s = 9182;
     const rand = () => { s = (s * 1664525 + 1013904223) >>> 0; return (s >>> 0) / 0xffffffff; };
-    return Array.from({ length: 14 }, () => ({
-      pos: [(rand() - 0.5) * 320, 60 + rand() * 40, (rand() - 0.5) * 280 - 60] as [number, number, number],
-      scale: 8 + rand() * 14,
-      rot: rand() * Math.PI,
-      alpha: 0.55 + rand() * 0.3,
-      speed: 0.06 + rand() * 0.1,
-      tint: rand() > 0.5 ? "#ffd9a8" : "#e8a878",
-    }));
+    // Warm-side clouds (closer to sun) get cream tint, others get cooler dusty rose
+    return Array.from({ length: 22 }, () => {
+      const x = (rand() - 0.5) * 320;
+      const sunSide = x > 0; // sun is at +X-ish
+      return {
+        pos: [x, 50 + rand() * 55, (rand() - 0.5) * 300 - 70] as [number, number, number],
+        scaleX: 18 + rand() * 30,
+        scaleY: 9 + rand() * 14,
+        alpha: 0.55 + rand() * 0.35,
+        speed: 0.08 + rand() * 0.14,
+        tint: sunSide
+          ? (rand() > 0.4 ? "#ffe2b8" : "#ffd0a0")
+          : (rand() > 0.4 ? "#e8b89c" : "#d8a08c"),
+      };
+    });
   }, []);
+
   const groupRef = useRef<THREE.Group>(null);
   useFrame((_, dt) => {
     if (!groupRef.current) return;
     groupRef.current.children.forEach((c, i) => {
       c.position.x += clouds[i].speed * dt;
-      if (c.position.x > 200) c.position.x = -200;
+      if (c.position.x > 220) c.position.x = -220;
     });
   });
+
   return (
     <group ref={groupRef}>
       {clouds.map((c, i) => (
-        <mesh key={i} position={c.pos} rotation={[Math.PI / 5, c.rot, 0]} scale={c.scale}>
-          <planeGeometry args={[3, 1.4]} />
-          <meshBasicMaterial color={c.tint} transparent opacity={c.alpha} side={THREE.DoubleSide} fog={false} />
-        </mesh>
+        <sprite
+          key={i}
+          position={c.pos}
+          scale={[c.scaleX, c.scaleY, 1]}
+        >
+          <spriteMaterial
+            map={tex}
+            color={c.tint}
+            transparent
+            opacity={c.alpha}
+            depthWrite={false}
+            fog={false}
+            toneMapped={false}
+          />
+        </sprite>
       ))}
     </group>
   );
@@ -620,6 +615,7 @@ function makeAuroraGeo(radius: number, height: number, color: string) {
 }
 
 function Aurora() {
+  const spellActive = useSpellActive();
   const bands = useMemo(
     () => [
       { color: "#5aff88", y: 65, opacity: 0.18, speed:  0.04, phase: 0.0 },
@@ -634,13 +630,20 @@ function Aurora() {
   );
   const refs = useRef<(THREE.Mesh | null)[]>([]);
   const matRefs = useRef<(THREE.MeshBasicMaterial | null)[]>([]);
-  useFrame(({ clock }) => {
-    const t = clock.elapsedTime;
+  // Smooth fade in/out tied to spell state
+  const fadeRef = useRef(1);
+  useFrame((_, dt) => {
+    const target = spellActive ? 1 : 0;
+    fadeRef.current += (target - fadeRef.current) * Math.min(1, 2 * dt);
+    const t = performance.now() / 1000;
     bands.forEach((b, i) => {
       const m = refs.current[i];
       const mat = matRefs.current[i];
       if (m) m.rotation.y = t * b.speed;
-      if (mat) mat.opacity = b.opacity + Math.sin(t * 0.4 + b.phase) * 0.06;
+      if (mat) {
+        const base = b.opacity + Math.sin(t * 0.4 + b.phase) * 0.06;
+        mat.opacity = base * fadeRef.current;
+      }
     });
   });
   return (
@@ -971,11 +974,11 @@ function Gong() {
 
   // Register strike fn at module scope so PlayerMovement can call it
   useEffect(() => {
-    strikeGong = () => {
+    gongStrike.fn = () => {
       strikeT.current = 0;
       playGongSynth();
     };
-    return () => { strikeGong = null; };
+    return () => { gongStrike.fn = null; };
   }, []);
 
   useFrame((_, dt) => {
@@ -1020,8 +1023,8 @@ function Gong() {
         <boxGeometry args={[3.5, 0.2, 0.25]} />
         <meshLambertMaterial color="#4a2a14" />
       </mesh>
-      {/* Gong disc — wobbles after strike */}
-      <mesh ref={discRef} position={[0, 1.9, 0]} onClick={() => strikeGong?.()}>
+      {/* Gong disc — wobbles after strike. Click is handled by InteractionSystem. */}
+      <mesh ref={discRef} position={[0, 1.9, 0]}>
         <cylinderGeometry args={[1.1, 1.1, 0.12, 32]} />
         <meshLambertMaterial color="#c89a3a" emissive="#3a2810" />
       </mesh>
@@ -1152,61 +1155,201 @@ function Spire({
   height?: number;
   radius?: number;
 }) {
+  // Warm-stone shaft → verdigris copper roof cap → patinated bronze finial bulb
   return (
     <group position={position}>
-      <mesh position={[0, 0.4, 0]}>
-        <boxGeometry args={[radius * 2.2, 0.8, radius * 2.2]} />
-        <meshLambertMaterial color="#7d6450" />
+      {/* Stepped base — three diminishing pads (deep umber → ochre) */}
+      <mesh position={[0, 0.3, 0]} castShadow>
+        <boxGeometry args={[radius * 2.4, 0.6, radius * 2.4]} />
+        <meshLambertMaterial color="#5a4128" />
       </mesh>
-      <mesh position={[0, 1.1, 0]}>
-        <boxGeometry args={[radius * 1.8, 0.6, radius * 1.8]} />
-        <meshLambertMaterial color="#8c7258" />
+      <mesh position={[0, 0.85, 0]} castShadow>
+        <boxGeometry args={[radius * 2.0, 0.5, radius * 2.0]} />
+        <meshLambertMaterial color="#6e5236" />
       </mesh>
-      <mesh position={[0, 1.4 + height / 2, 0]}>
-        <coneGeometry args={[radius, height, 6]} />
-        <meshLambertMaterial color="#967660" />
+      <mesh position={[0, 1.35, 0]} castShadow>
+        <boxGeometry args={[radius * 1.7, 0.4, radius * 1.7]} />
+        <meshLambertMaterial color="#82654a" />
       </mesh>
-      <mesh position={[0, 1.4 + height + 0.3, 0]}>
-        <sphereGeometry args={[radius * 0.18, 8, 8]} />
-        <meshLambertMaterial color="#7a6048" />
+      {/* Tower shaft — tapered cylinder, octagonal */}
+      <mesh position={[0, 1.55 + height * 0.3, 0]} castShadow>
+        <cylinderGeometry args={[radius * 0.78, radius * 1.05, height * 0.6, 8]} />
+        <meshLambertMaterial color="#8a6c4a" />
+      </mesh>
+      {/* Upper bell — narrows further */}
+      <mesh position={[0, 1.55 + height * 0.7, 0]} castShadow>
+        <cylinderGeometry args={[radius * 0.45, radius * 0.78, height * 0.22, 8]} />
+        <meshLambertMaterial color="#9a7c5a" />
+      </mesh>
+      {/* Verdigris copper roof cap — replaces the cone finial */}
+      <mesh position={[0, 1.55 + height * 0.92, 0]} castShadow>
+        <coneGeometry args={[radius * 0.55, height * 0.22, 8]} />
+        <meshLambertMaterial color="#4d9080" />
+      </mesh>
+      {/* Bronze finial bulb — patinated verdigris */}
+      <mesh position={[0, 1.55 + height * 1.12, 0]}>
+        <sphereGeometry args={[radius * 0.22, 12, 12]} />
+        <meshLambertMaterial color="#5fb09a" emissive="#1a3a30" emissiveIntensity={0.18} />
+      </mesh>
+      {/* Tiny topknot rod */}
+      <mesh position={[0, 1.55 + height * 1.22, 0]}>
+        <cylinderGeometry args={[radius * 0.04, radius * 0.04, height * 0.08, 6]} />
+        <meshLambertMaterial color="#3e7a6c" />
       </mesh>
     </group>
   );
 }
 
+/* ─── BRAZIER — verdigris-bronze ceremonial bowl flanking the entrance */
+function Brazier({ position }: { position: [number, number, number] }) {
+  const flameRef = useRef<THREE.Mesh>(null);
+  const lightRef = useRef<THREE.PointLight>(null);
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime + position[0];
+    const flicker = 0.85 + Math.sin(t * 9) * 0.12 + Math.sin(t * 19) * 0.06;
+    if (flameRef.current) flameRef.current.scale.y = flicker;
+    if (lightRef.current) lightRef.current.intensity = 0.9 + flicker * 0.5;
+  });
+  return (
+    <group position={position}>
+      {/* Stone plinth */}
+      <mesh position={[0, 0.5, 0]} castShadow>
+        <cylinderGeometry args={[0.55, 0.7, 1.0, 8]} />
+        <meshLambertMaterial color="#4a3422" />
+      </mesh>
+      {/* Stone shaft */}
+      <mesh position={[0, 1.4, 0]} castShadow>
+        <cylinderGeometry args={[0.4, 0.45, 0.8, 8]} />
+        <meshLambertMaterial color="#5a4030" />
+      </mesh>
+      {/* Verdigris bronze bowl */}
+      <mesh position={[0, 2.0, 0]} castShadow>
+        <cylinderGeometry args={[0.85, 0.55, 0.45, 16]} />
+        <meshLambertMaterial color="#4d9080" />
+      </mesh>
+      {/* Darker patinated rim */}
+      <mesh position={[0, 2.25, 0]}>
+        <torusGeometry args={[0.85, 0.07, 8, 16]} />
+        <meshLambertMaterial color="#2e6a5c" />
+      </mesh>
+      {/* Hot embers in bowl */}
+      <mesh position={[0, 2.18, 0]}>
+        <sphereGeometry args={[0.55, 12, 12]} />
+        <meshBasicMaterial color="#ff5a18" toneMapped={false} fog={false} />
+      </mesh>
+      {/* Flickering flame */}
+      <mesh ref={flameRef} position={[0, 2.55, 0]}>
+        <coneGeometry args={[0.35, 0.9, 8]} />
+        <meshBasicMaterial color="#ffd070" toneMapped={false} transparent opacity={0.85} blending={THREE.AdditiveBlending} fog={false} />
+      </mesh>
+      {/* Warm point light */}
+      <pointLight ref={lightRef} position={[0, 2.4, 0]} color="#ff8030" intensity={1.0} distance={9} decay={2} />
+    </group>
+  );
+}
+
 function Temple() {
-  // Pre-painted geometries with per-face variation — caches once per mount.
-  const tier1 = useMemo(() => paintBox(34, 6, 34, PALETTE.stone, 0.18, 1), []);
-  const tier2 = useMemo(() => paintBox(26, 4, 26, "#84715a", 0.18, 2), []);
-  const tier3 = useMemo(() => paintBox(18, 4, 18, "#92805a", 0.16, 3), []);
-  const tier4 = useMemo(() => paintBox(10, 2, 10, "#a08966", 0.14, 4), []);
-  const stair = useMemo(() => paintBox(10, 0.7, 1.0, "#7a6450", 0.20, 5), []);
+  // Tier blocks — warm brown palette: deep umber → burnt sienna → sandstone → pale ochre
+  const tier1 = useMemo(() => paintBox(34, 6, 34, "#5e4530", 0.20, 1), []);  // deep umber
+  const tier2 = useMemo(() => paintBox(26, 4, 26, "#6e5538", 0.20, 2), []);  // burnt sienna
+  const tier3 = useMemo(() => paintBox(18, 4, 18, "#82664a", 0.18, 3), []);  // sandstone
+  const tier4 = useMemo(() => paintBox(10, 2, 10, "#967a5e", 0.16, 4), []);  // pale ochre
+  // Cornice — darker shadow under each tier
+  const cornice1 = useMemo(() => paintBox(36, 0.7, 36, "#3e2a18", 0.12, 11), []);
+  const cornice2 = useMemo(() => paintBox(28, 0.6, 28, "#382616", 0.12, 12), []);
+  const cornice3 = useMemo(() => paintBox(20, 0.5, 20, "#352314", 0.12, 13), []);
+  const cornice4 = useMemo(() => paintBox(12, 0.4, 12, "#352314", 0.12, 14), []);
+  // Frieze — thin decorative band running between tiers (slight color break)
+  const frieze1 = useMemo(() => paintBox(34.5, 0.45, 34.5, "#4a3520", 0.12, 21), []);
+  const frieze2 = useMemo(() => paintBox(26.5, 0.4,  26.5, "#52382a", 0.12, 22), []);
+  const frieze3 = useMemo(() => paintBox(18.5, 0.35, 18.5, "#5a4030", 0.12, 23), []);
+  // Niche / decorative recess (narrow vertical slits set into wall faces)
+  const niche   = useMemo(() => paintBox(0.6, 2.8, 0.18, "#26180c", 0.20, 15), []);
+  const stair   = useMemo(() => paintBox(6,   0.7, 1.0,  "#6e5236", 0.20, 5),  []);
+
+  // Pediment — triangular relief above the doorway
+  const pedimentGeo = useMemo(() => {
+    const s = new THREE.Shape();
+    s.moveTo(-3, 0);
+    s.lineTo(0, 1.8);
+    s.lineTo(3, 0);
+    s.closePath();
+    return new THREE.ExtrudeGeometry(s, { depth: 0.3, bevelEnabled: false });
+  }, []);
 
   return (
     <group position={[0, 0, -42]} scale={1.45}>
-      <mesh position={[0, 3, 0]}  geometry={tier1} castShadow receiveShadow><meshLambertMaterial vertexColors /></mesh>
-      <mesh position={[0, 9, 0]}  geometry={tier2} castShadow receiveShadow><meshLambertMaterial vertexColors /></mesh>
-      <mesh position={[0, 14, 0]} geometry={tier3} castShadow receiveShadow><meshLambertMaterial vertexColors /></mesh>
-      <mesh position={[0, 18, 0]} geometry={tier4} castShadow receiveShadow><meshLambertMaterial vertexColors /></mesh>
+      {/* ── Tier 1 — base */}
+      <mesh position={[0, 3, 0]}    geometry={tier1}   castShadow receiveShadow><meshLambertMaterial vertexColors /></mesh>
+      <mesh position={[0, 6.35, 0]} geometry={cornice1} castShadow><meshLambertMaterial vertexColors /></mesh>
 
-      <Spire position={[0, 19, 0]}     height={10} radius={2.4} />
-      <Spire position={[-10, 11, -10]} height={5}  radius={1.4} />
-      <Spire position={[ 10, 11, -10]} height={5}  radius={1.4} />
-      <Spire position={[-10, 11,  10]} height={5}  radius={1.4} />
-      <Spire position={[ 10, 11,  10]} height={5}  radius={1.4} />
+      {/* Niches set into tier 1 — front and back faces */}
+      {[-12, -6, 6, 12].map((x, i) => (
+        <mesh key={`n1f-${i}`} position={[x, 3.5, 17.1]}  geometry={niche}><meshLambertMaterial vertexColors /></mesh>
+      ))}
+      {[-12, -6, 6, 12].map((x, i) => (
+        <mesh key={`n1b-${i}`} position={[x, 3.5, -17.1]} geometry={niche}><meshLambertMaterial vertexColors /></mesh>
+      ))}
+      {[-12, -6, 6, 12].map((z, i) => (
+        <mesh key={`n1l-${i}`} position={[-17.1, 3.5, z]} rotation={[0, Math.PI / 2, 0]} geometry={niche}><meshLambertMaterial vertexColors /></mesh>
+      ))}
+      {[-12, -6, 6, 12].map((z, i) => (
+        <mesh key={`n1r-${i}`} position={[ 17.1, 3.5, z]} rotation={[0, Math.PI / 2, 0]} geometry={niche}><meshLambertMaterial vertexColors /></mesh>
+      ))}
 
-      {/* Worn stairs */}
-      {Array.from({ length: 8 }).map((_, i) => (
-        <mesh key={i} position={[0, 0.4 + i * 0.7, 17 + i * 0.5]} geometry={stair}>
+      {/* ── Tier 2 */}
+      <mesh position={[0, 9, 0]}     geometry={tier2}   castShadow receiveShadow><meshLambertMaterial vertexColors /></mesh>
+      <mesh position={[0, 11.3, 0]}  geometry={cornice2} castShadow><meshLambertMaterial vertexColors /></mesh>
+
+      {/* ── Tier 3 */}
+      <mesh position={[0, 14, 0]}    geometry={tier3}   castShadow receiveShadow><meshLambertMaterial vertexColors /></mesh>
+      <mesh position={[0, 16.25, 0]} geometry={cornice3} castShadow><meshLambertMaterial vertexColors /></mesh>
+
+      {/* ── Tier 4 — top platform */}
+      <mesh position={[0, 18, 0]}    geometry={tier4}   castShadow receiveShadow><meshLambertMaterial vertexColors /></mesh>
+      <mesh position={[0, 19.2, 0]}  geometry={cornice4} castShadow><meshLambertMaterial vertexColors /></mesh>
+
+      {/* ── Central spire — tall pinnacle on top */}
+      <Spire position={[0, 19.6, 0]} height={12} radius={2.4} />
+
+      {/* ── Tier 2 corner spires — at actual corners */}
+      <Spire position={[-12, 11.6, -12]} height={5} radius={1.4} />
+      <Spire position={[ 12, 11.6, -12]} height={5} radius={1.4} />
+      <Spire position={[-12, 11.6,  12]} height={5} radius={1.4} />
+      <Spire position={[ 12, 11.6,  12]} height={5} radius={1.4} />
+
+      {/* ── Tier 3 cardinal-direction mid-edge spires (smaller) */}
+      <Spire position={[-9, 16.55, 0]}  height={3.2} radius={1.0} />
+      <Spire position={[ 9, 16.55, 0]}  height={3.2} radius={1.0} />
+      <Spire position={[0, 16.55, -9]}  height={3.2} radius={1.0} />
+      {/* removed front-center cardinal spire — it sat directly over the staircase */}
+
+      {/* ── Worn front stairs — flipped so lowest step is closest to player,
+            extended to 27 steps so they climb all the way to the top platform.
+            Stairs cut visually through the tiers when seen from above, but the
+            tier boxes' frontfaces hide most of the clipping from normal angles. */}
+      {Array.from({ length: 27 }).map((_, i) => (
+        <mesh
+          key={i}
+          position={[0, 0.4 + i * 0.7, 20.5 - i * 0.5]}
+          geometry={stair}
+        >
           <meshLambertMaterial vertexColors />
         </mesh>
       ))}
 
-      {/* Pillars — keep cylinder, just tint to palette */}
+      {/* ── Front pillars */}
       {[-12, -7, -2, 3, 8, 13].map((x, i) => (
-        <mesh key={i} position={[x - 0.5, 3.5, 17]}>
-          <cylinderGeometry args={[0.45, 0.45, 5, 8]} />
+        <mesh key={i} position={[x - 0.5, 3.5, 17]} castShadow>
+          <cylinderGeometry args={[0.45, 0.5, 5, 8]} />
           <meshLambertMaterial color="#9a8268" />
+        </mesh>
+      ))}
+      {/* Pillar capitals — small block on top of each */}
+      {[-12, -7, -2, 3, 8, 13].map((x, i) => (
+        <mesh key={`cap-${i}`} position={[x - 0.5, 6.15, 17]}>
+          <boxGeometry args={[1.1, 0.3, 1.1]} />
+          <meshLambertMaterial color="#7a6450" />
         </mesh>
       ))}
     </group>
@@ -1401,6 +1544,137 @@ function CursedAcer({ position }: { position: [number, number, number] }) {
   );
 }
 
+/* ─── Featured projects shown on the floating monitors */
+type ProjectMonitor = {
+  id: string;
+  title: string;
+  role: string;
+  year: string;
+  tags: string[];
+  bg: string;     // monitor background fallback
+  accent: string; // accent / glow color
+  image: string;  // /public path — real screenshot
+  description: string;
+};
+
+const FEATURED_PROJECTS: ProjectMonitor[] = [
+  {
+    id: "disaster",
+    title: "Disaster Response",
+    role: "Frontend Lead · UI Architect",
+    year: "2024",
+    tags: ["React", "Firebase", "Mapbox"],
+    bg: "#5a1a1a",
+    accent: "#ff6a44",
+    image: "/images/projects/Screenshot 2024-09-12 131056.png",
+    description:
+      "Real-time emergency coordination platform connecting first responders with civilians during natural disasters across the Zamboanga peninsula. Live SOS pins, geo-fenced alerts, low-bandwidth fallback. A quiet observation from the build: in a flood, the simplest UI saves the most lives.",
+  },
+  {
+    id: "eilish",
+    title: "The Eilish Vault",
+    role: "Frontend Developer",
+    year: "2025",
+    tags: ["React", "GSAP", "Tailwind"],
+    bg: "#3a3a4a",
+    accent: "#c0a0c8",
+    image: "/images/projects/Screenshot 2025-04-16 112218.png",
+    description:
+      "A fan-built archive site — discography, lyrics, and editorial moodboards stitched together with reverent typography. Built as an exercise in restraint: every page asked 'does this serve the artist?' before any pixel was placed.",
+  },
+  {
+    id: "saas",
+    title: "SaaS Catering",
+    role: "Full-Stack Engineer",
+    year: "2025",
+    tags: ["Next.js", "Supabase", "Stripe"],
+    bg: "#3a1a4a",
+    accent: "#a040ff",
+    image: "/images/projects/Screenshot 2025-02-07 095800.png",
+    description:
+      "Multi-tenant catering platform — booking flows, menu builder, payment splits, and an admin dashboard for venue partners. Background jobs that keep weddings on schedule and reservations that survive a Friday-night spike.",
+  },
+];
+
+/* ─── Single monitor — loads its own screenshot via Suspense */
+function ProjectMonitorView({ project, dx }: { project: ProjectMonitor; dx: number }) {
+  const screenshot = useTexture(project.image);
+  useEffect(() => {
+    if (screenshot) {
+      screenshot.colorSpace = THREE.SRGBColorSpace;
+      // Avoid blurry ANGLE-mipmap weirdness on some drivers
+      screenshot.minFilter = THREE.LinearFilter;
+      screenshot.magFilter = THREE.LinearFilter;
+      screenshot.generateMipmaps = false;
+      screenshot.needsUpdate = true;
+    }
+  }, [screenshot]);
+
+  return (
+    <Interactable
+      input="click"
+      label={`Open: ${project.title}`}
+      cooldown={400}
+      onInteract={() =>
+        openDialogue({
+          sub: `Project · ${project.year} · ${project.role}`,
+          title: project.title,
+          body: project.description,
+          image: project.image,
+        })
+      }
+    >
+      <group position={[dx, 1.9, 0.2]} rotation={[0, -dx * 0.18, 0]}>
+        {/* Frame glow halo (additive) — slightly larger than screen for a glow ring */}
+        <mesh position={[0, 0, -0.002]}>
+          <planeGeometry args={[1.04, 0.72]} />
+          <meshBasicMaterial
+            color={project.accent}
+            toneMapped={false}
+            transparent
+            opacity={0.5}
+            blending={THREE.AdditiveBlending}
+            fog={false}
+          />
+        </mesh>
+        {/* Screen — full-bleed screenshot */}
+        <mesh>
+          <planeGeometry args={[0.96, 0.66]} />
+          <meshBasicMaterial
+            map={screenshot}
+            toneMapped={false}
+            side={THREE.DoubleSide}
+            fog={false}
+          />
+        </mesh>
+      </group>
+    </Interactable>
+  );
+}
+
+/* ─── Suspense fallback — solid colored monitor while screenshot loads */
+function ProjectMonitorPlaceholder({ project, dx }: { project: ProjectMonitor; dx: number }) {
+  return (
+    <group position={[dx, 1.9, 0.2]} rotation={[0, -dx * 0.18, 0]}>
+      <mesh position={[0, 0, -0.002]}>
+        <planeGeometry args={[1.04, 0.72]} />
+        <meshBasicMaterial
+          color={project.accent}
+          toneMapped={false}
+          transparent
+          opacity={0.5}
+          blending={THREE.AdditiveBlending}
+          fog={false}
+        />
+      </mesh>
+      <mesh>
+        <planeGeometry args={[0.96, 0.66]} />
+        <meshBasicMaterial color={project.bg} toneMapped={false} fog={false} />
+      </mesh>
+    </group>
+  );
+}
+
 function ThroneDesk({ position }: { position: [number, number, number] }) {
   return (
     <group position={position}>
@@ -1426,24 +1700,16 @@ function ThroneDesk({ position }: { position: [number, number, number] }) {
         <boxGeometry args={[1.6, 2.2, 0.14]} />
         <meshLambertMaterial color="#3a2418" />
       </mesh>
-      {/* Floating holographic monitors (3) */}
-      {[-1.0, 0, 1.0].map((dx, i) => (
-        <group key={i} position={[dx, 1.9, 0.2]} rotation={[0, dx * 0.18, 0]}>
-          <mesh>
-            <planeGeometry args={[0.85, 0.55]} />
-            <meshBasicMaterial color="#1a3a4a" transparent opacity={0.85} side={THREE.DoubleSide} fog={false} />
-          </mesh>
-          <mesh position={[0, 0, 0.001]}>
-            <planeGeometry args={[0.78, 0.48]} />
-            <meshBasicMaterial color={["#ff7028", "#3aa8ff", "#a040ff"][i]} transparent opacity={0.7} blending={THREE.AdditiveBlending} side={THREE.DoubleSide} fog={false} />
-          </mesh>
-          {/* Frame glow */}
-          <mesh>
-            <planeGeometry args={[0.92, 0.62]} />
-            <meshBasicMaterial color="#ffaa44" toneMapped={false} transparent opacity={0.3} blending={THREE.AdditiveBlending} fog={false} />
-          </mesh>
-        </group>
-      ))}
+
+      {/* Floating monitors — each loads its own screenshot via Suspense */}
+      {FEATURED_PROJECTS.map((p, i) => {
+        const dx = (i - (FEATURED_PROJECTS.length - 1) / 2) * 1.1;
+        return (
+          <Suspense key={p.id} fallback={<ProjectMonitorPlaceholder project={p} dx={dx} />}>
+            <ProjectMonitorView project={p} dx={dx} />
+          </Suspense>
+        );
+      })}
     </group>
   );
 }
@@ -1535,59 +1801,6 @@ function TechRune({ position, type, rotationY = 0 }: { position: [number, number
   );
 }
 
-function CentralSigil({ position }: { position: [number, number, number] }) {
-  const ringRef = useRef<THREE.Group>(null);
-  useFrame(({ clock }) => {
-    if (!ringRef.current) return;
-    ringRef.current.rotation.z = clock.elapsedTime * 0.3;
-  });
-  return (
-    <group position={position}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[2.4, 32]} />
-        <meshBasicMaterial color="#1a0a04" fog={false} />
-      </mesh>
-      <group ref={ringRef}>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
-          <ringGeometry args={[2.0, 2.2, 36]} />
-          <meshBasicMaterial color="#ff7028" toneMapped={false} side={THREE.DoubleSide} fog={false} />
-        </mesh>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-          <ringGeometry args={[1.4, 1.5, 36]} />
-          <meshBasicMaterial color="#ffaa44" toneMapped={false} side={THREE.DoubleSide} fog={false} />
-        </mesh>
-        {/* Radial spokes */}
-        {Array.from({ length: 8 }).map((_, i) => {
-          const a = (i / 8) * Math.PI * 2;
-          return (
-            <mesh
-              key={i}
-              position={[Math.cos(a) * 1.7, 0.03, Math.sin(a) * 1.7]}
-              rotation={[-Math.PI / 2, 0, -a]}
-            >
-              <planeGeometry args={[0.5, 0.06]} />
-              <meshBasicMaterial color="#fff0a0" toneMapped={false} side={THREE.DoubleSide} fog={false} />
-            </mesh>
-          );
-        })}
-        {/* Center "K" — stylized as cross of 2 boxes */}
-        <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[0.18, 0.7]} />
-          <meshBasicMaterial color="#fff0a0" toneMapped={false} side={THREE.DoubleSide} fog={false} />
-        </mesh>
-        <mesh position={[0.13, 0.04, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 4]}>
-          <planeGeometry args={[0.14, 0.4]} />
-          <meshBasicMaterial color="#fff0a0" toneMapped={false} side={THREE.DoubleSide} fog={false} />
-        </mesh>
-        <mesh position={[0.13, 0.04, 0]} rotation={[-Math.PI / 2, 0, -Math.PI / 4]}>
-          <planeGeometry args={[0.14, 0.4]} />
-          <meshBasicMaterial color="#fff0a0" toneMapped={false} side={THREE.DoubleSide} fog={false} />
-        </mesh>
-      </group>
-    </group>
-  );
-}
-
 function SanctumHall() {
   return (
     <group position={[-32, 0, -28]}>
@@ -1659,8 +1872,22 @@ function SanctumHall() {
         <FloatingTome position={[0, 1.8, 0]} color="#fff0a0" />
       </group>
 
-      {/* Cursed Acer — to the right of pedestal */}
-      <CursedAcer position={[6, 0, 0]} />
+      {/* Cursed Acer — clickable; the relic of great power */}
+      <Interactable
+        input="click"
+        label="Examine the Relic"
+        cooldown={400}
+        onInteract={() =>
+          openDialogue({
+            sub: "Relic · Display Case III",
+            title: "The Cursed Acer Aspire",
+            body:
+              "An artifact of great power, lost to the floods of 2024. Its keys remember the strokes of a thousand commits. Forensic evidence suggests the device once compiled a Next.js 13 app under conditions no longer reproducible. Touch it not — the warranty is long expired.",
+          })
+        }
+      >
+        <CursedAcer position={[6, 0, 0]} />
+      </Interactable>
 
       {/* Throne-desk at the back wall */}
       <ThroneDesk position={[0, 0, -9]} />
@@ -1674,8 +1901,6 @@ function SanctumHall() {
       <TechRune position={[8.5, 5.6, -2]} type="flutter"  rotationY={-Math.PI / 2} />
       <TechRune position={[8.5, 5.6, -6]} type="supabase" rotationY={-Math.PI / 2} />
 
-      {/* Central floor sigil */}
-      <CentralSigil position={[0, 0.05, 6]} />
     </group>
   );
 }
@@ -1690,29 +1915,79 @@ function FloatingFragments() {
     let s = 13579;
     const rand = () => { s = (s * 1664525 + 1013904223) >>> 0; return (s >>> 0) / 0xffffffff; };
     return Array.from({ length: N }, () => ({
-      radius:    14 + rand() * 8,                  // orbit radius around spire
-      speed:     0.12 + rand() * 0.15,             // angular velocity
-      offset:    rand() * Math.PI * 2,             // starting phase
-      yBase:     34 + rand() * 12,                 // height above ground
-      yWobble:   1 + rand() * 1.5,                 // bob amplitude
-      size:      0.8 + rand() * 1.6,               // chunk size
-      tilt:      rand() * Math.PI,                 // self-rotation start
+      radius:    14 + rand() * 8,
+      speed:     0.12 + rand() * 0.15,
+      offset:    rand() * Math.PI * 2,
+      yBase:     34 + rand() * 12,
+      yWobble:   1 + rand() * 1.5,
+      size:      0.8 + rand() * 1.6,
+      tilt:      rand() * Math.PI,
     }));
   }, []);
   const refs = useRef<(THREE.Mesh | null)[]>([]);
-  useFrame(({ clock }) => {
-    const t = clock.elapsedTime;
+  // Per-fragment physics state — survives between spell on/off transitions
+  const states = useRef(fragments.map((f) => {
+    const a = f.offset;
+    return {
+      x: Math.cos(a) * f.radius,
+      y: f.yBase,
+      z: Math.sin(a) * f.radius - 42,
+      vx: 0, vy: 0, vz: 0,
+      rx: f.tilt,
+      ry: f.tilt * 0.7,
+      rz: 0,
+      landed: false,
+    };
+  }));
+  const spellActive = useSpellActive();
+
+  useFrame((_, dt) => {
+    const t = performance.now() / 1000;
     fragments.forEach((f, i) => {
       const m = refs.current[i];
+      const st = states.current[i];
       if (!m) return;
-      const a = t * f.speed + f.offset;
-      m.position.x = Math.cos(a) * f.radius;
-      m.position.z = Math.sin(a) * f.radius - 42; // centered on temple z
-      m.position.y = f.yBase + Math.sin(t * 0.6 + f.offset) * f.yWobble;
-      m.rotation.x = f.tilt + t * 0.3;
-      m.rotation.y = f.tilt * 0.7 + t * 0.2;
+
+      if (spellActive) {
+        // ── Active: lerp back toward the orbit target (recovers from a fall)
+        const a = t * f.speed + f.offset;
+        const tx = Math.cos(a) * f.radius;
+        const tz = Math.sin(a) * f.radius - 42;
+        const ty = f.yBase + Math.sin(t * 0.6 + f.offset) * f.yWobble;
+        const lerp = 1 - Math.exp(-2.0 * dt); // dt-independent smoothing
+        st.x += (tx - st.x) * lerp;
+        st.y += (ty - st.y) * lerp;
+        st.z += (tz - st.z) * lerp;
+        st.vx = st.vy = st.vz = 0;
+        st.landed = false;
+        st.rx = f.tilt + t * 0.3;
+        st.ry = f.tilt * 0.7 + t * 0.2;
+        st.rz = 0;
+      } else if (!st.landed) {
+        // ── Inactive: gravity pulls them down, slight tumble
+        st.vy -= 9.81 * dt;
+        st.x += st.vx * dt;
+        st.y += st.vy * dt;
+        st.z += st.vz * dt;
+        st.rx += dt * 1.6;
+        st.ry += dt * 0.9;
+        st.rz += dt * 0.7;
+        // Land on the temple top / ground
+        const groundY = f.size * 0.5;
+        if (st.y <= groundY) {
+          st.y = groundY;
+          st.vy = 0;
+          st.vx *= 0.4;
+          st.vz *= 0.4;
+          st.landed = true;
+        }
+      }
+
+      m.position.set(st.x, st.y, st.z);
+      m.rotation.set(st.rx, st.ry, st.rz);
     });
   });
+
   return (
     <group>
       {fragments.map((f, i) => (
@@ -1812,6 +2087,139 @@ function VintazkTablet() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+ * VILLAGE — small low-poly huts ringing the temple at middle distance
+ *   • Stone-base + clay-tile roof + glowing window + chimney
+ *   • Procedurally placed in 6 clusters (left, right, back-left, back-right,
+ *     far-back-left, far-back-right) — never inside the player area
+ *   • Window glow blooms via toneMapped={false}
+ * ═══════════════════════════════════════════════════════════════════════════ */
+type HutColor = { wall: string; roof: string; trim: string };
+const HUT_PALETTE: HutColor[] = [
+  { wall: "#7a5e44", roof: "#3a1a14", trim: "#4a2818" },
+  { wall: "#85705a", roof: "#4a2418", trim: "#3a1d18" },
+  { wall: "#8a6f56", roof: "#48211a", trim: "#3a1d18" },
+  { wall: "#6e5440", roof: "#3e1d18", trim: "#2c150c" },
+];
+
+function Hut({
+  position,
+  scale = 1,
+  rotationY = 0,
+  color,
+  litWindow = true,
+  windowColor = "#ffb060",
+}: {
+  position: [number, number, number];
+  scale?: number;
+  rotationY?: number;
+  color: HutColor;
+  litWindow?: boolean;
+  windowColor?: string;
+}) {
+  return (
+    <group position={position} rotation={[0, rotationY, 0]} scale={scale}>
+      {/* Stone base / walls */}
+      <mesh position={[0, 1.4, 0]} castShadow receiveShadow>
+        <boxGeometry args={[3, 2.8, 2.4]} />
+        <meshLambertMaterial color={color.wall} />
+      </mesh>
+      {/* Wooden trim band at base */}
+      <mesh position={[0, 0.25, 0]}>
+        <boxGeometry args={[3.05, 0.5, 2.45]} />
+        <meshLambertMaterial color={color.trim} />
+      </mesh>
+      {/* Clay-tile pyramid roof — rotated 45° so it reads as a 4-sided pitch */}
+      <mesh position={[0, 3.45, 0]} rotation={[0, Math.PI / 4, 0]} castShadow>
+        <coneGeometry args={[2.3, 1.6, 4]} />
+        <meshLambertMaterial color={color.roof} />
+      </mesh>
+      {/* Window — glowing if lit */}
+      {litWindow && (
+        <>
+          <mesh position={[0, 1.5, 1.21]}>
+            <planeGeometry args={[0.55, 0.55]} />
+            <meshBasicMaterial color={windowColor} toneMapped={false} fog />
+          </mesh>
+          {/* Window cross-frame */}
+          <mesh position={[0, 1.5, 1.215]}>
+            <planeGeometry args={[0.55, 0.05]} />
+            <meshBasicMaterial color={color.trim} fog />
+          </mesh>
+          <mesh position={[0, 1.5, 1.215]}>
+            <planeGeometry args={[0.05, 0.55]} />
+            <meshBasicMaterial color={color.trim} fog />
+          </mesh>
+        </>
+      )}
+      {/* Door */}
+      <mesh position={[1.0, 0.95, 1.21]}>
+        <planeGeometry args={[0.7, 1.5]} />
+        <meshLambertMaterial color={color.trim} />
+      </mesh>
+      {/* Chimney */}
+      <mesh position={[0.7, 4.2, -0.4]}>
+        <boxGeometry args={[0.3, 0.7, 0.3]} />
+        <meshLambertMaterial color={color.trim} />
+      </mesh>
+    </group>
+  );
+}
+
+function Village() {
+  const huts = useMemo(() => {
+    let s = 8765;
+    const r = () => { s = (s * 1664525 + 1013904223) >>> 0; return (s >>> 0) / 0xffffffff; };
+
+    // Cluster centers chosen to ring the temple without entering the player's
+    // walkable zone (bounded x∈[-55,50], z∈[-55,80]).
+    const clusters: { cx: number; cz: number; n: number; spread: number }[] = [
+      { cx: -68, cz:  18, n: 5, spread: 14 },
+      { cx:  62, cz:  14, n: 5, spread: 14 },
+      { cx: -78, cz: -18, n: 4, spread: 16 },
+      { cx:  74, cz: -22, n: 4, spread: 16 },
+      { cx: -38, cz: -85, n: 4, spread: 18 },
+      { cx:  42, cz: -85, n: 4, spread: 18 },
+    ];
+
+    type HutDef = {
+      position: [number, number, number];
+      scale: number;
+      rotationY: number;
+      color: HutColor;
+      litWindow: boolean;
+      windowColor: string;
+    };
+    const arr: HutDef[] = [];
+    const windowHues = ["#ffb060", "#ff9040", "#ffc070", "#ff8030", "#ffa050"];
+    for (const c of clusters) {
+      for (let i = 0; i < c.n; i++) {
+        const a = (i / c.n) * Math.PI * 2 + r() * 0.9;
+        const dist = 3 + r() * c.spread;
+        const x = c.cx + Math.cos(a) * dist;
+        const z = c.cz + Math.sin(a) * dist;
+        arr.push({
+          position: [x, 0, z],
+          scale: 0.9 + r() * 0.55,
+          rotationY: r() * Math.PI * 2,
+          color: HUT_PALETTE[Math.floor(r() * HUT_PALETTE.length)],
+          litWindow: r() > 0.18,
+          windowColor: windowHues[Math.floor(r() * windowHues.length)],
+        });
+      }
+    }
+    return arr;
+  }, []);
+
+  return (
+    <group>
+      {huts.map((h, i) => (
+        <Hut key={i} {...h} />
+      ))}
+    </group>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
  * SANCTUM PORTAL — animated doors + sling-ring spell circle + entry burst
  *   • Doors swing OUTWARD as you approach (within 7 units)
  *   • Glow behind doors intensifies with door openness
@@ -1822,7 +2230,6 @@ function VintazkTablet() {
 function SanctumPortal() {
   const leftRef = useRef<THREE.Group>(null);
   const rightRef = useRef<THREE.Group>(null);
-  const glowMatRef = useRef<THREE.MeshBasicMaterial>(null);
   const isOpenRef = useRef(false);
   const lastZRef = useRef(99);
 
@@ -1881,12 +2288,6 @@ function SanctumPortal() {
     if (leftRef.current)  leftRef.current.rotation.y  += (targetLeft  - leftRef.current.rotation.y)  * 0.06;
     if (rightRef.current) rightRef.current.rotation.y += (targetRight - rightRef.current.rotation.y) * 0.06;
 
-    // ── Glow intensity follows door openness (0..1 based on left door angle)
-    if (glowMatRef.current && leftRef.current) {
-      const openness = leftRef.current.rotation.y / (Math.PI / 2.2);
-      glowMatRef.current.opacity = 0.18 + openness * 0.55;
-    }
-
     // ── Threshold crossing — trigger burst when player walks through
     const z = PLAYER_POS.z;
     const x = PLAYER_POS.x;
@@ -1914,21 +2315,6 @@ function SanctumPortal() {
 
   return (
     <group position={[-32, 0, -17]}>
-      {/* ── Glow plane behind doors (intensifies as they open) */}
-      <mesh position={[0, 3.8, -0.25]}>
-        <planeGeometry args={[7.2, 7.6]} />
-        <meshBasicMaterial
-          ref={glowMatRef}
-          color="#ffaa44"
-          transparent
-          opacity={0.18}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          side={THREE.DoubleSide}
-          fog={false}
-        />
-      </mesh>
-
       {/* ── Left door — hinge at x = -4 */}
       <group ref={leftRef} position={[-4, 0, 0]}>
         {/* Door panel */}
@@ -2112,23 +2498,59 @@ function PalmGrove() {
   const trees = useMemo(() => {
     let s = 4242;
     const rand = () => { s = (s * 1664525 + 1013904223) >>> 0; return (s >>> 0) / 0xffffffff; };
+
+    // No-spawn zones — anything important the trees shouldn't grow through.
+    const NO_GO: { x: number; z: number; r: number }[] = [
+      { x: -15, z:  12, r: 5 },   // gong + frame
+      { x:   0, z:   8, r: 5 },   // altar + spell pillar
+      { x:  -4, z:  -8, r: 3 },   // foo dog left
+      { x:   4, z:  -8, r: 3 },   // foo dog right
+      { x:   8, z:  64, r: 3 },   // vintazk tablet
+      { x:  22, z:  -8, r: 6 },   // reflecting pool
+      { x: -24, z: -10, r: 7 },   // sparring posts cluster
+      { x:   0, z: -42, r: 30 },  // main temple footprint (scaled 1.45 × 34 base)
+      { x:  30, z: -42, r: 14 },  // right annex
+      { x: -30, z: -42, r: 14 },  // left annex
+      { x: -32, z: -28, r: 14 },  // sanctum hall
+      { x:   0, z:   0, r: 4 },   // central path mid-point
+      // Village clusters — don't grow trees through the huts
+      { x: -68, z:  18, r: 16 },
+      { x:  62, z:  14, r: 16 },
+      { x: -78, z: -18, r: 18 },
+      { x:  74, z: -22, r: 18 },
+      { x: -38, z: -85, r: 20 },
+      { x:  42, z: -85, r: 20 },
+    ];
+    const isClear = (x: number, z: number) => {
+      for (const n of NO_GO) {
+        const dx = x - n.x, dz = z - n.z;
+        if (dx * dx + dz * dz < n.r * n.r) return false;
+      }
+      return true;
+    };
+
     const arr: { pos: [number, number, number]; scale: number; rotationY: number; variant: 0 | 1 | 2 }[] = [];
     for (let i = 0; i < 14; i++) {
       const sideSign = i % 2 === 0 ? -1 : 1;
       const z = 60 - (i >> 1) * 8;
+      const x = sideSign * (12 + rand() * 3);
+      if (!isClear(x, z)) continue;
       arr.push({
-        pos: [sideSign * (12 + rand() * 3), 0, z],
-        scale: 0.7 + rand() * 0.7,                  // wider scale spread (0.7..1.4)
-        rotationY: rand() * Math.PI * 2,           // each tree faces a different way
+        pos: [x, 0, z],
+        scale: 0.7 + rand() * 0.7,
+        rotationY: rand() * Math.PI * 2,
         variant: Math.floor(rand() * 3) as 0 | 1 | 2,
       });
     }
     for (let i = 0; i < 22; i++) {
       const a = rand() * Math.PI * 2;
       const r = 42 + rand() * 60;
+      const x = Math.cos(a) * r;
+      const z = Math.sin(a) * r - 30;
+      if (!isClear(x, z)) continue;
       arr.push({
-        pos: [Math.cos(a) * r, 0, Math.sin(a) * r - 30],
-        scale: 0.65 + rand() * 0.85,               // (0.65..1.5)
+        pos: [x, 0, z],
+        scale: 0.65 + rand() * 0.85,
         rotationY: rand() * Math.PI * 2,
         variant: Math.floor(rand() * 3) as 0 | 1 | 2,
       });
@@ -2200,16 +2622,24 @@ function Altar() {
   const ringRef = useRef<THREE.Mesh>(null);
   const orbitRef = useRef<THREE.Group>(null);
   const pillarRef = useRef<THREE.MeshBasicMaterial>(null);
+  const spellActive = useSpellActive();
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
-    if (ringRef.current) ringRef.current.rotation.z = t * 0.4;
-    if (orbitRef.current) orbitRef.current.rotation.y = -t * 0.6;
-    // Pulse the spell circle's alpha
+    if (ringRef.current) ringRef.current.rotation.z = spellActive ? t * 0.4 : 0;
+    if (orbitRef.current) orbitRef.current.rotation.y = spellActive ? -t * 0.6 : 0;
     if (pillarRef.current) {
-      pillarRef.current.opacity = 0.4 + Math.sin(t * 2) * 0.18;
+      pillarRef.current.opacity = spellActive
+        ? 0.4 + Math.sin(t * 2) * 0.18
+        : 0.04;
     }
   });
   return (
+    <Interactable
+      input="click"
+      label="Touch the Spell Circle"
+      cooldown={500}
+      onInteract={() => setSpellActive(!spellActive)}
+    >
     <group position={[0, 0.05, 8]}>
       <mesh position={[0, 0.15, 0]}>
         <cylinderGeometry args={[2.6, 2.8, 0.3, 32]} />
@@ -2239,52 +2669,7 @@ function Altar() {
         <meshBasicMaterial ref={pillarRef} color="#ffaa44" transparent opacity={0.5} blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} fog={false} />
       </mesh>
     </group>
-  );
-}
-
-function FloatingEmbers({ count = 600 }: { count?: number }) {
-  const ref = useRef<THREE.Points>(null);
-  const { positions, colors, vels } = useMemo(() => {
-    const positions = new Float32Array(count * 3);
-    const colors = new Float32Array(count * 3);
-    const vels = new Float32Array(count);
-    const palette: [number, number, number][] = [
-      [1.0, 0.85, 0.35],
-      [1.0, 0.55, 0.20],
-      [1.0, 0.30, 0.10],
-      [1.0, 0.75, 0.40],
-    ];
-    for (let i = 0; i < count; i++) {
-      positions[i * 3]     = (Math.random() - 0.5) * 100;
-      positions[i * 3 + 1] = Math.random() * 15;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 100 - 10;
-      const c = palette[Math.floor(Math.random() * palette.length)];
-      colors[i * 3] = c[0]; colors[i * 3 + 1] = c[1]; colors[i * 3 + 2] = c[2];
-      vels[i] = 0.3 + Math.random() * 0.9;
-    }
-    return { positions, colors, vels };
-  }, [count]);
-  useFrame((_, dt) => {
-    if (!ref.current) return;
-    const arr = ref.current.geometry.attributes.position.array as Float32Array;
-    for (let i = 0; i < count; i++) {
-      arr[i * 3 + 1] += vels[i] * dt;
-      if (arr[i * 3 + 1] > 25) {
-        arr[i * 3] = (Math.random() - 0.5) * 100;
-        arr[i * 3 + 1] = 0;
-        arr[i * 3 + 2] = (Math.random() - 0.5) * 100 - 10;
-      }
-    }
-    ref.current.geometry.attributes.position.needsUpdate = true;
-  });
-  return (
-    <points ref={ref}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-        <bufferAttribute attach="attributes-color" args={[colors, 3]} />
-      </bufferGeometry>
-      <pointsMaterial vertexColors size={0.13} transparent opacity={0.85} blending={THREE.AdditiveBlending} depthWrite={false} sizeAttenuation />
-    </points>
+    </Interactable>
   );
 }
 
@@ -2305,11 +2690,11 @@ function GoldenHourLight() {
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
         shadow-camera-near={1}
-        shadow-camera-far={180}
-        shadow-camera-left={-70}
-        shadow-camera-right={70}
-        shadow-camera-top={70}
-        shadow-camera-bottom={-70}
+        shadow-camera-far={260}
+        shadow-camera-left={-90}
+        shadow-camera-right={90}
+        shadow-camera-top={90}
+        shadow-camera-bottom={-90}
         shadow-bias={-0.0005}
       />
       {/* A subtle warm fill from camera-side so silhouettes don't go fully black */}
@@ -2321,6 +2706,29 @@ function GoldenHourLight() {
 /* ═══════════════════════════════════════════════════════════════════════════
  * PLAYER MOVEMENT — WASD + bounds + write to PLAYER_POS
  * ═══════════════════════════════════════════════════════════════════════════ */
+/* ─── PLAYER SHADOW — invisible capsule at the camera's feet that the
+   directional sun renders into the shadow map. The mesh's colorWrite is
+   off so the player never sees the body itself, only the shadow it casts. */
+function PlayerShadowCaster() {
+  const ref = useRef<THREE.Mesh>(null);
+  useFrame(() => {
+    if (!ref.current) return;
+    // Body center sits below eye level — torso from y≈0.25 to y≈1.45
+    ref.current.position.set(PLAYER_POS.x, 0.85, PLAYER_POS.z);
+  });
+  return (
+    <mesh ref={ref} castShadow frustumCulled={false}>
+      <capsuleGeometry args={[0.32, 1.1, 4, 8]} />
+      <meshBasicMaterial
+        transparent
+        opacity={0}
+        depthWrite={false}
+        colorWrite={false}
+      />
+    </mesh>
+  );
+}
+
 function PlayerMovement() {
   const { camera } = useThree();
   const keys = useRef<Set<string>>(new Set());
@@ -2336,11 +2744,17 @@ function PlayerMovement() {
       if (e.code === "KeyE") {
         const dx = PLAYER_POS.x - (-15);
         const dz = PLAYER_POS.z - 12;
-        if (Math.sqrt(dx * dx + dz * dz) < 5) strikeGong?.();
+        if (Math.sqrt(dx * dx + dz * dz) < 5) gongStrike.fn?.();
       }
-      // Jump — Space, only when grounded
-      if (e.code === "Space" && onGround.current) {
-        velY.current = 8.5;
+      // Toggle fly mode — V
+      if (e.code === "KeyV") {
+        setFly(!FLY_STATE.on);
+        if (FLY_STATE.on) velY.current = 0;
+      }
+      // Jump — Space, only when grounded (and not flying — Space ascends in fly).
+      // 4.5 m/s impulse against 9.81 m/s² gravity → ~1.03 m peak (athletic human).
+      if (e.code === "Space" && onGround.current && !FLY_STATE.on) {
+        velY.current = 4.5;
         onGround.current = false;
         e.preventDefault?.();
       }
@@ -2356,7 +2770,39 @@ function PlayerMovement() {
 
   useFrame((_, dt) => {
     const sprint = keys.current.has("ShiftLeft") || keys.current.has("ShiftRight");
-    const speed = (sprint ? 12 : 7) * dt;
+
+    // ─── FLY MODE: noclip 6-DOF movement, no gravity, no collision, no bounds.
+    if (FLY_STATE.on) {
+      const flySpeed = (sprint ? 38 : 14) * dt;
+      camera.getWorldDirection(_forward); // includes pitch — so W flies up/down with view
+      _right.crossVectors(_forward, camera.up).normalize();
+
+      let mvF = 0, mvR = 0, mvU = 0;
+      if (keys.current.has("KeyW") || keys.current.has("ArrowUp"))    mvF += 1;
+      if (keys.current.has("KeyS") || keys.current.has("ArrowDown"))  mvF -= 1;
+      if (keys.current.has("KeyD") || keys.current.has("ArrowRight")) mvR += 1;
+      if (keys.current.has("KeyA") || keys.current.has("ArrowLeft"))  mvR -= 1;
+      if (keys.current.has("Space"))                                  mvU += 1;
+      if (keys.current.has("ControlLeft") || keys.current.has("KeyC")) mvU -= 1;
+
+      const inLen = Math.sqrt(mvF * mvF + mvR * mvR + mvU * mvU);
+      if (inLen > 0) { mvF /= inLen; mvR /= inLen; mvU /= inLen; }
+
+      camera.position.x += (_forward.x * mvF + _right.x * mvR) * flySpeed;
+      camera.position.y += (_forward.y * mvF + mvU) * flySpeed;
+      camera.position.z += (_forward.z * mvF + _right.z * mvR) * flySpeed;
+
+      velY.current = 0;
+      onGround.current = false;
+      PLAYER_POS.copy(camera.position);
+      return;
+    }
+
+    // Earthly-but-comfortable speeds — 4.8 m/s walk (fast walk), 8.5 m/s sprint (jog).
+    // Reduced air control (0.5×) while jumping — momentum is mostly conserved mid-air.
+    const groundSpeed = sprint ? 8.5 : 4.8;
+    const airFactor = onGround.current ? 1.0 : 0.5;
+    const speed = groundSpeed * airFactor * dt;
 
     // Camera-relative horizontal basis (yaw only — exclude pitch by zeroing y)
     camera.getWorldDirection(_forward);
@@ -2381,11 +2827,28 @@ function PlayerMovement() {
 
     if (mvF !== 0) {
       _dir.copy(_forward).multiplyScalar(Math.sign(mvF));
-      if (isBlocked(_origin, _dir)) mvF = 0;
+      if (isBlocked(_origin, _dir)) {
+        // Try to step UP onto a low obstacle (stairs, ledges, cornices)
+        const newY = tryStepUp(camera.position.y, camera.position.x, camera.position.z, _dir.x, _dir.z);
+        if (newY !== null) {
+          camera.position.y = newY;
+          velY.current = 0;
+        } else {
+          mvF = 0;
+        }
+      }
     }
     if (mvR !== 0) {
       _dir.copy(_right).multiplyScalar(Math.sign(mvR));
-      if (isBlocked(_origin, _dir)) mvR = 0;
+      if (isBlocked(_origin, _dir)) {
+        const newY = tryStepUp(camera.position.y, camera.position.x, camera.position.z, _dir.x, _dir.z);
+        if (newY !== null) {
+          camera.position.y = newY;
+          velY.current = 0;
+        } else {
+          mvR = 0;
+        }
+      }
     }
 
     // Apply surviving horizontal movement
@@ -2398,13 +2861,22 @@ function PlayerMovement() {
       camera.position.z += _right.z * mvR * speed;
     }
 
-    // ── Vertical: gravity + ground snap (jumping support)
-    velY.current -= 25 * dt;
+    // ── Vertical: Earth gravity (9.81 m/s²) + ground-following raycast
+    velY.current -= 9.81 * dt;
     camera.position.y += velY.current * dt;
 
-    const groundLevel = 1.7; // flat-ground eye height
-    if (camera.position.y <= groundLevel) {
-      camera.position.y = groundLevel;
+    // Cast straight down from slightly above the player's feet to find
+    // the highest collidable surface beneath. Falls back to flat y=0 ground.
+    _origin.copy(camera.position);
+    _origin.y += 0.5;
+    _groundRay.set(_origin, _down);
+    const groundHits = _groundRay.intersectObjects(COLLIDABLES, false);
+    let groundY = 0;
+    if (groundHits.length > 0) groundY = groundHits[0].point.y;
+
+    const targetY = groundY + 1.7;
+    if (camera.position.y <= targetY) {
+      camera.position.y = targetY;
       velY.current = 0;
       onGround.current = true;
     } else {
@@ -2442,13 +2914,26 @@ function Scene() {
       <Collider><Torii /></Collider>
       <Collider><PathLanterns /></Collider>
       <Collider><SparringPosts /></Collider>
-      <Collider><Gong /></Collider>
+
+      {/* Gong — clickable interaction (rings the bronze) */}
+      <Collider>
+        <Interactable
+          input="click"
+          label="Ring the Gong"
+          cooldown={1500}
+          onInteract={() => gongStrike.fn?.()}
+        >
+          <Gong />
+        </Interactable>
+      </Collider>
+
       <Collider>
         <FooDog position={[-4, 0, -8]} mirror={false} />
         <FooDog position={[ 4, 0, -8]} mirror={true} />
       </Collider>
       <Collider><Temple /></Collider>
       <Collider><SanctumHall /></Collider>
+      <Collider><Village /></Collider>
 
       {/* ── Decorative / pass-through (still render, no collision) ── */}
       <PrayerFlags />
@@ -2462,13 +2947,131 @@ function Scene() {
       <GroundSigil position={[0, 0.05, 56]} scale={0.9} />
       <GroundSigil position={[0, 0.05, 30]} scale={0.7} />
       <GroundSigil position={[0, 0.05, -2]} scale={0.85} />
-      <VintazkTablet />
+
+      {/* Vintazk tablet — clickable, opens an inscription panel */}
+      <Interactable
+        input="click"
+        label="Read the Inscription"
+        cooldown={400}
+        onInteract={() =>
+          openDialogue({
+            sub: "Inscription · The Stone Tablet",
+            title: "The Seal of the Order",
+            body:
+              "Carved by the founders of the Vintazk order. The interlocked V marks the breath of creation — one stroke for code, one for craft, the dot above for the spark that animates them. Below the seal: \"May your runes compile clean, and your portals close gently behind you.\"",
+          })
+        }
+      >
+        <VintazkTablet />
+      </Interactable>
+
+      {/* Interaction core — runs raycast loop and listens for inputs */}
+      <InteractionSystem />
       <Visitors />
       <Altar />
-      <FloatingEmbers count={500} />
-      <DustMotes count={90} />
+      <DustMotes count={45} />
+      <PlayerShadowCaster />
       <PlayerMovement />
     </>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * INTERACTION PROMPT — centered overlay shown when ray hits an interactable
+ * ═══════════════════════════════════════════════════════════════════════════ */
+function InteractionPrompt() {
+  const active = useActiveInteractable();
+  const [visible, setVisible] = useState(false);
+  useEffect(() => { setVisible(!!active); }, [active]);
+  if (!active && !visible) return null;
+  const inputLabel =
+    active?.input === "click" ? "CLICK" :
+    active?.input === "e"     ? "PRESS E" :
+    active?.input === "f"     ? "PRESS F" : "";
+  return (
+    <div
+      className="fixed left-1/2 top-1/2 z-[60] pointer-events-none -translate-x-1/2 mt-10"
+      style={{
+        opacity: active ? 1 : 0,
+        transition: "opacity 200ms ease-out",
+      }}
+    >
+      <div className="px-4 py-2 rounded-md bg-black/70 backdrop-blur-md border border-white/15 text-white text-[11px] font-mono uppercase tracking-[0.22em] flex items-center gap-2.5 shadow-lg whitespace-nowrap">
+        <span className="text-[#ffb070] font-semibold">{inputLabel}</span>
+        <span className="text-white/30">·</span>
+        <span>{active?.label ?? ""}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * DIALOGUE PANEL — shows passed-in text content, ESC or backdrop closes
+ * ═══════════════════════════════════════════════════════════════════════════ */
+function DialoguePanel() {
+  const [content, setContent] = useState<DialogueContent | null>(null);
+  useEffect(() => {
+    _showDialogue = setContent;
+    return () => { _showDialogue = null; };
+  }, []);
+  if (!content) return null;
+  return (
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center pointer-events-auto"
+      onClick={closeDialogue}
+      style={{ animation: "dialogueFadeIn 250ms ease-out both" }}
+    >
+      <style>{`@keyframes dialogueFadeIn { from { opacity: 0 } to { opacity: 1 } }`}</style>
+      <div className="absolute inset-0 bg-black/65 backdrop-blur-md" />
+      <div
+        className="relative max-w-2xl mx-6 rounded-2xl border border-[#ff6a00]/30 shadow-[0_30px_80px_rgba(0,0,0,0.7)] overflow-hidden"
+        style={{ background: "linear-gradient(160deg, rgba(40,18,12,0.92), rgba(18,8,12,0.92))" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {content.image && (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={content.image}
+            alt={content.title}
+            className="w-full h-56 sm:h-72 object-cover border-b border-white/10"
+          />
+        )}
+        <div className="p-7 sm:p-8">
+          <div className="text-[10px] font-mono tracking-[0.4em] uppercase text-[#ffb070] mb-3">
+            {content.sub ?? "Inscription"}
+          </div>
+          <h2
+            className="text-2xl sm:text-3xl mb-4 leading-tight"
+            style={{ fontFamily: "var(--font-serif), 'Cormorant Garamond', serif", fontWeight: 400, color: "#f4e8d4" }}
+          >
+            {content.title}
+          </h2>
+          <p className="text-white/75 leading-relaxed text-sm sm:text-base">{content.body}</p>
+          <div className="mt-7 flex items-center justify-between text-[10px] font-mono text-white/45 tracking-[0.22em] uppercase">
+            <span>Click outside · Esc to close</span>
+            <div className="flex items-center gap-2">
+              {content.liveUrl && (
+                <a
+                  href={content.liveUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="px-3 py-1.5 rounded border border-[#ff6a00]/40 text-[#ffb070] hover:bg-[#ff6a00]/10 transition"
+                >
+                  Visit Live ↗
+                </a>
+              )}
+              <button
+                onClick={(e) => { e.stopPropagation(); closeDialogue(); }}
+                className="px-3 py-1.5 rounded border border-white/20 text-white/70 hover:text-white hover:bg-white/[0.05] transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -2513,6 +3116,31 @@ function LandmarkHud() {
   );
 }
 
+function FlyHud() {
+  const [on, setOn] = useState(FLY_STATE.on);
+  useEffect(() => subscribeFly(setOn), []);
+  return (
+    <div className="fixed top-1/2 left-5 -translate-y-1/2 z-[60] pointer-events-none">
+      <div className="px-3 py-2 rounded-md bg-black/55 backdrop-blur-md border border-white/10 text-[10px] font-mono tracking-[0.22em] uppercase text-white/75">
+        <div>
+          MODE:{" "}
+          <span style={{ color: on ? "#5a8a7a" : "#ffb070" }}>
+            {on ? "FLY" : "WALK"}
+          </span>
+        </div>
+        <div className="opacity-60 mt-1">V · toggle fly</div>
+        {on && (
+          <div className="opacity-60 mt-1 leading-relaxed normal-case tracking-normal">
+            wasd · move<br />
+            space · up · ctrl/c · down<br />
+            shift · boost
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
  * ROOT EXPORT
  * ═══════════════════════════════════════════════════════════════════════════ */
@@ -2544,7 +3172,7 @@ export default function World() {
     <>
       <div className="fixed inset-0 w-screen h-screen overflow-hidden bg-[#1a0a18] z-0">
         <Canvas
-          shadows={{ type: THREE.PCFSoftShadowMap }}
+          shadows={{ type: THREE.PCFShadowMap }}
           gl={{
             antialias: true,
             toneMapping: THREE.ACESFilmicToneMapping,
@@ -2593,6 +3221,12 @@ export default function World() {
         </div>
       )}
 
+      {/* Centered interaction prompt — visible whenever the crosshair hits an interactable */}
+      {locked && <InteractionPrompt />}
+
+      {/* Dialogue panel — fullscreen modal for inscriptions / relics / lore */}
+      <DialoguePanel />
+
       {locked && (
         <>
           <div className="fixed inset-0 z-[55] flex items-center justify-center pointer-events-none">
@@ -2602,6 +3236,7 @@ export default function World() {
             <div>WASD · walk</div>
             <div>SPACE · jump</div>
             <div>SHIFT · run</div>
+            <div>V · fly mode</div>
             <div>E · interact</div>
             <div>ESC · release</div>
           </div>
@@ -2610,6 +3245,7 @@ export default function World() {
             <div>Eastern Courtyard · Sunset</div>
           </div>
           <LandmarkHud />
+          <FlyHud />
         </>
       )}
 

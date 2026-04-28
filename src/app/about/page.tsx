@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import ExperienceTimeline from "@/components/ExperienceTimeline";
-import DarkDimensionFX from "@/components/DarkDimensionFx";
-import MandalaPortal from "@/components/MandalaPortalClient";
-import EldritchHeading from "@/components/EldritchHeading";
-import "@/components/DarkDimension.css";
+import ExperienceTimeline from "@/components/sections/ExperienceTimeline";
+import DarkDimensionFX from "@/components/effects/DarkDimensionFx";
+import MandalaPortal from "@/components/effects/MandalaPortalClient";
+import EldritchHeading from "@/components/effects/EldritchHeading";
+import "@/components/effects/DarkDimension.css";
 
 export const metadata: Metadata = {
   title: "About | KENTO_O — Dark Dimension",
