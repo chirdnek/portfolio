@@ -454,10 +454,16 @@ function Clouds() {
   }, []);
 
   const groupRef = useRef<THREE.Group>(null);
+  const tickRef = useRef(0);
+  const dtAccRef = useRef(0);
   useFrame((_, dt) => {
+    dtAccRef.current += dt;
+    if ((++tickRef.current & 1) !== 0) return; // throttle: every other frame
+    const effDt = dtAccRef.current;
+    dtAccRef.current = 0;
     if (!groupRef.current) return;
     groupRef.current.children.forEach((c, i) => {
-      c.position.x += clouds[i].speed * dt;
+      c.position.x += clouds[i].speed * effDt;
       if (c.position.x > 220) c.position.x = -220;
     });
   });
@@ -557,13 +563,19 @@ function Birds() {
     }));
   }, []);
   const refs = useRef<(THREE.Group | null)[]>([]);
+  const birdTickRef = useRef(0);
+  const birdDtAccRef = useRef(0);
 
   useFrame((_, dt) => {
+    birdDtAccRef.current += dt;
+    if ((++birdTickRef.current & 1) !== 0) return; // throttle: every other frame
+    const effDt = birdDtAccRef.current;
+    birdDtAccRef.current = 0;
     const t = performance.now() / 1000;
     data.forEach((b, i) => {
       const g = refs.current[i];
       if (!g) return;
-      g.position.x += b.speed * dt;
+      g.position.x += b.speed * effDt;
       if (g.position.x > 220) g.position.x = -220;
       // Wing flap → tilt the whole silhouette (cheap vs animating two wings)
       const flap = Math.sin(t * b.flapRate + b.flapPhase);
@@ -632,9 +644,15 @@ function Aurora() {
   const matRefs = useRef<(THREE.MeshBasicMaterial | null)[]>([]);
   // Smooth fade in/out tied to spell state
   const fadeRef = useRef(1);
+  const auroraTickRef = useRef(0);
+  const auroraDtAccRef = useRef(0);
   useFrame((_, dt) => {
+    auroraDtAccRef.current += dt;
+    if ((++auroraTickRef.current & 1) !== 0) return; // throttle: every other frame
+    const effDt = auroraDtAccRef.current;
+    auroraDtAccRef.current = 0;
     const target = spellActive ? 1 : 0;
-    fadeRef.current += (target - fadeRef.current) * Math.min(1, 2 * dt);
+    fadeRef.current += (target - fadeRef.current) * Math.min(1, 2 * effDt);
     const t = performance.now() / 1000;
     bands.forEach((b, i) => {
       const m = refs.current[i];
@@ -844,7 +862,9 @@ function PrayerFlags() {
   }, []);
 
   const flapRef = useRef<THREE.Group>(null);
+  const flagTickRef = useRef(0);
   useFrame(({ clock }) => {
+    if ((++flagTickRef.current & 1) !== 0) return; // throttle: every other frame
     if (!flapRef.current) return;
     const t = clock.elapsedTime;
     flapRef.current.children.forEach((line) => {
@@ -2455,7 +2475,13 @@ function DustMotes({ count = 80 }: { count?: number }) {
     return { positions, vels };
   }, [count]);
 
+  const moteTickRef = useRef(0);
+  const moteDtAccRef = useRef(0);
   useFrame((_, dt) => {
+    moteDtAccRef.current += dt;
+    if ((++moteTickRef.current & 1) !== 0) return; // throttle: every other frame
+    const effDt = moteDtAccRef.current;
+    moteDtAccRef.current = 0;
     if (!ref.current) return;
     // Keep mote field anchored loosely around the camera so motes always read
     ref.current.position.x = camera.position.x;
@@ -2463,9 +2489,9 @@ function DustMotes({ count = 80 }: { count?: number }) {
 
     const arr = ref.current.geometry.attributes.position.array as Float32Array;
     for (let i = 0; i < count; i++) {
-      arr[i * 3]     += vels[i * 3] * dt;
-      arr[i * 3 + 1] += vels[i * 3 + 1] * dt;
-      arr[i * 3 + 2] += vels[i * 3 + 2] * dt;
+      arr[i * 3]     += vels[i * 3] * effDt;
+      arr[i * 3 + 1] += vels[i * 3 + 1] * effDt;
+      arr[i * 3 + 2] += vels[i * 3 + 2] * effDt;
       // Wrap inside a small box around the player
       if (arr[i * 3 + 1] > 8) arr[i * 3 + 1] = 0;
       if (arr[i * 3]     >  11) arr[i * 3]     = -11;
@@ -2687,14 +2713,14 @@ function GoldenHourLight() {
         intensity={2.2}
         color="#ffaa66"
         castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
         shadow-camera-near={1}
-        shadow-camera-far={260}
-        shadow-camera-left={-90}
-        shadow-camera-right={90}
-        shadow-camera-top={90}
-        shadow-camera-bottom={-90}
+        shadow-camera-far={180}
+        shadow-camera-left={-70}
+        shadow-camera-right={70}
+        shadow-camera-top={70}
+        shadow-camera-bottom={-70}
         shadow-bias={-0.0005}
       />
       {/* A subtle warm fill from camera-side so silhouettes don't go fully black */}
@@ -3174,13 +3200,16 @@ export default function World() {
         <Canvas
           shadows={{ type: THREE.PCFShadowMap }}
           gl={{
-            antialias: true,
+            antialias: false,
+            powerPreference: "high-performance",
             toneMapping: THREE.ACESFilmicToneMapping,
             toneMappingExposure: 1.1,
             outputColorSpace: THREE.SRGBColorSpace,
+            stencil: false,
           }}
-          camera={{ position: [0, 1.7, 50], fov: 65, near: 0.1, far: 800 }}
-          dpr={[1, 1.7]}
+          camera={{ position: [0, 1.7, 50], fov: 65, near: 0.1, far: 600 }}
+          dpr={[1, 1.5]}
+          performance={{ min: 0.5 }}
         >
           <color attach="background" args={["#1a0a18"]} />
           {/* Warm dark fog — exponential falloff bakes the dimensional dusk in */}

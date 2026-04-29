@@ -89,9 +89,14 @@ export default function KENTO_O() {
     const cam = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
     cam.position.z = 6;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    const renderer = new THREE.WebGLRenderer({
+      antialias: false,
+      alpha: true,
+      powerPreference: "high-performance",
+      stencil: false,
+    });
     renderer.debug.checkShaderErrors = false;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setClearColor(0x000000, 0);
     mount.appendChild(renderer.domElement);
@@ -102,7 +107,23 @@ export default function KENTO_O() {
     const c1 = buildCircle(scene, 0xffcc33, 0xff7722);
     const c2 = buildCircle(scene, 0x44ffdd, 0x3366ff);
 
-    let arcLine: THREE.Line | null = null;
+    // Persistent arc — rebuild positions in place instead of allocating per frame
+    const ARC_SEGMENTS = 60;
+    const arcPos = new Float32Array((ARC_SEGMENTS + 1) * 3);
+    const arcGeo = new THREE.BufferGeometry();
+    arcGeo.setAttribute("position", new THREE.BufferAttribute(arcPos, 3));
+    const arcMat = new THREE.LineBasicMaterial({
+      color: 0xffee66, transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    const arcLine = new THREE.Line(arcGeo, arcMat);
+    arcLine.visible = false;
+    scene.add(arcLine);
+    const _arcMid = new THREE.Vector3();
+    const _arcA = new THREE.Vector3();
+    const _arcB = new THREE.Vector3();
+    const _arcC = new THREE.Vector3();
+    const _arcTmp = new THREE.Vector3();
 
     const onResize = () => {
       const w = window.innerWidth, h = window.innerHeight;
@@ -316,32 +337,34 @@ export default function KENTO_O() {
         tickCircle(c2, lm[1] ?? null, t, dt, halfW, halfH, onTripleCircle);
       }
 
-      // Arc between both sigils
-      if (arcLine) {
-        scene.remove(arcLine);
-        arcLine.geometry.dispose();
-        (arcLine.material as THREE.Material).dispose();
-        arcLine = null;
-      }
+      // Arc between both sigils — rebuild positions in place (no per-frame alloc)
       if (!portalActive && c1.userData.alive && c2.userData.alive) {
-        const midPt = c1.position.clone().add(c2.position).multiplyScalar(0.5);
-        midPt.z += 1.0;
-        const curve = new THREE.QuadraticBezierCurve3(
-          c1.position.clone(), midPt, c2.position.clone()
-        );
-        arcLine = new THREE.Line(
-          new THREE.BufferGeometry().setFromPoints(curve.getPoints(60)),
-          new THREE.LineBasicMaterial({
-            color: 0xffee66, transparent: true,
-            opacity: 0.55 + 0.15 * Math.sin(t * 4),
-            blending: THREE.AdditiveBlending, depthWrite: false,
-          })
-        );
-        scene.add(arcLine);
+        _arcA.copy(c1.position);
+        _arcC.copy(c2.position);
+        _arcMid.copy(_arcA).add(_arcC).multiplyScalar(0.5);
+        _arcMid.z += 1.0;
+        // Quadratic Bezier sample
+        for (let i = 0; i <= ARC_SEGMENTS; i++) {
+          const u = i / ARC_SEGMENTS;
+          const inv = 1 - u;
+          _arcTmp.copy(_arcA).multiplyScalar(inv * inv);
+          _arcB.copy(_arcMid).multiplyScalar(2 * inv * u);
+          _arcTmp.add(_arcB);
+          _arcB.copy(_arcC).multiplyScalar(u * u);
+          _arcTmp.add(_arcB);
+          arcPos[i * 3]     = _arcTmp.x;
+          arcPos[i * 3 + 1] = _arcTmp.y;
+          arcPos[i * 3 + 2] = _arcTmp.z;
+        }
+        arcGeo.attributes.position.needsUpdate = true;
+        arcMat.opacity = 0.55 + 0.15 * Math.sin(t * 4);
+        arcLine.visible = true;
 
         if (c1.position.distanceTo(c2.position) < 2.4) {
-          triggerPortal(c1.position.clone().add(c2.position).multiplyScalar(0.5));
+          triggerPortal(_arcMid.clone());
         }
+      } else {
+        arcLine.visible = false;
       }
 
       // ── Portal animation ────────────────────────────────────────────────
@@ -648,6 +671,10 @@ type CircleUserData = {
 const EMBER_RADIUS = 1.9;
 const TRIPLE_CIRCLE_THRESHOLD = 4 * Math.PI;
 
+// Module-scoped scratch vectors — reused every frame to avoid GC churn
+const _tickTarget = new THREE.Vector3();
+const _tickTmp = new THREE.Vector3();
+
 function spawnEmber(e: EmberSeed) {
   const theta = Math.random() * Math.PI * 2;
   const phi   = Math.acos(2 * Math.random() - 1);
@@ -886,7 +913,7 @@ function buildCircle(scene: THREE.Scene, primary: number, accent: number) {
   g.add(new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 12), addMat(primary,  0.35)));
 
   const glowTex = makeGlowTex();
-  const N = 1400;
+  const N = 700;
   const sparkPos = new Float32Array(N * 3);
   const sparkData: SparkSeed[] = Array.from({ length: N }, () => {
     const axis = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
@@ -911,7 +938,7 @@ function buildCircle(scene: THREE.Scene, primary: number, accent: number) {
   );
   g.add(sparks);
 
-  const emberCount = 350;
+  const emberCount = 200;
   const emberPos = new Float32Array(emberCount * 3);
   const emberCol = new Float32Array(emberCount * 3);
   const emberData: EmberSeed[] = Array.from({ length: emberCount }, () => ({
@@ -980,7 +1007,8 @@ function tickCircle(
     const tip   = landmarks[12];
     const wx = (1 - palm.x) * 2 * halfW - halfW;
     const wy = (0.5 - palm.y) * 2 * halfH;
-    ud.smoothPos.lerp(new THREE.Vector3(wx, wy, 0), 0.18);
+    _tickTarget.set(wx, wy, 0);
+    ud.smoothPos.lerp(_tickTarget, 0.18);
 
     if (isClosedFist(landmarks)) {
       ud.targetScale = 0; ud.alive = false;
@@ -1030,12 +1058,11 @@ function tickCircle(
   });
 
   const pos = ud.sparkPos;
-  const tmpv = new THREE.Vector3();
   ud.sparkData.forEach((p, i) => {
     p.angle += p.speed;
     const flicker = 0.04 * Math.sin(t * 5 + i * 1.1);
-    tmpv.copy(p.ortho).applyAxisAngle(p.axis, p.angle).multiplyScalar(p.r + flicker);
-    pos[i * 3] = tmpv.x; pos[i * 3 + 1] = tmpv.y; pos[i * 3 + 2] = tmpv.z;
+    _tickTmp.copy(p.ortho).applyAxisAngle(p.axis, p.angle).multiplyScalar(p.r + flicker);
+    pos[i * 3] = _tickTmp.x; pos[i * 3 + 1] = _tickTmp.y; pos[i * 3 + 2] = _tickTmp.z;
   });
   ud.sparkGeo.attributes.position.needsUpdate = true;
 
