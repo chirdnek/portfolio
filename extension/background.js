@@ -3,6 +3,8 @@ importScripts("config.js");
 const ALARM_NAME = "time-stone-poll";
 const STORAGE_KEY = "lastUpdated";
 const LATEST_KEY = "latestUpdate";
+const PENDING_URL_KEY = "pendingUrl";
+const BADGE_COLOR = "#d4a23a";
 
 const MYSTICAL_TITLES = [
   "The Time Stone Stirs",
@@ -41,12 +43,32 @@ async function checkForUpdate() {
     }
 
     if (previous !== data.lastUpdated) {
-      await chrome.storage.local.set({ [STORAGE_KEY]: data.lastUpdated });
+      await chrome.storage.local.set({
+        [STORAGE_KEY]: data.lastUpdated,
+        [PENDING_URL_KEY]: data.url || CONFIG.PORTFOLIO_URL
+      });
+      setBadge(true);
       fireNotification(data);
     }
   } catch (err) {
     console.warn("[Time Stone] Failed to read the timestream:", err);
   }
+}
+
+function setBadge(active) {
+  chrome.action.setBadgeBackgroundColor({ color: BADGE_COLOR });
+  chrome.action.setBadgeText({ text: active ? "1" : "" });
+}
+
+async function openPortfolio() {
+  const stored = await chrome.storage.local.get([PENDING_URL_KEY, LATEST_KEY]);
+  const url =
+    stored[PENDING_URL_KEY] ||
+    stored[LATEST_KEY]?.url ||
+    CONFIG.PORTFOLIO_URL;
+  chrome.tabs.create({ url });
+  await chrome.storage.local.remove(PENDING_URL_KEY);
+  setBadge(false);
 }
 
 function fireNotification(data) {
@@ -63,7 +85,7 @@ function fireNotification(data) {
 
 chrome.notifications.onClicked.addListener((id) => {
   if (id === "time-stone-update") {
-    chrome.tabs.create({ url: CONFIG.PORTFOLIO_URL });
+    openPortfolio();
     chrome.notifications.clear(id);
   }
 });
@@ -88,5 +110,16 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.type === "FORCE_CHECK") {
     checkForUpdate().then(() => sendResponse({ ok: true }));
     return true;
+  }
+  if (msg?.type === "MARK_SEEN") {
+    chrome.storage.local.remove(PENDING_URL_KEY);
+    setBadge(false);
+    sendResponse({ ok: true });
+    return false;
+  }
+  if (msg?.type === "OPEN_PORTFOLIO") {
+    openPortfolio();
+    sendResponse({ ok: true });
+    return false;
   }
 });
