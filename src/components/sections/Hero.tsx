@@ -1,170 +1,122 @@
 "use client";
 
+import Link from "next/link";
+import { motion } from "framer-motion";
+import ScrambleText from "@/components/ui/ScrambleText";
+import MagneticButton from "@/components/ui/MagneticButton";
+
 export default function Hero() {
   return (
-    <>
-      <section
-        id="hero-section"
-        className="relative z-20 flex flex-col justify-center items-center min-h-screen overflow-hidden"
-      >
-        {/* ── Top fade bridge — pure black top blending into IntroSection's dark bottom ── */}
-        <div
-          aria-hidden
-          className="absolute top-0 left-0 right-0 pointer-events-none z-0"
-          style={{
-            height: "50vh",
-            background:
-              "linear-gradient(to bottom, #000 0%, rgba(0,0,0,0.85) 25%, rgba(0,0,0,0.45) 55%, transparent 100%)",
-          }}
-        />
+    <section className="relative min-h-screen flex items-center pt-32 pb-24 overflow-hidden">
+      {/* Subtle grid backdrop */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.04]"
+        style={{
+          backgroundImage:
+            "linear-gradient(var(--foreground) 1px, transparent 1px), linear-gradient(90deg, var(--foreground) 1px, transparent 1px)",
+          backgroundSize: "64px 64px",
+          maskImage:
+            "radial-gradient(ellipse at 30% 50%, #000 30%, transparent 75%)",
+          WebkitMaskImage:
+            "radial-gradient(ellipse at 30% 50%, #000 30%, transparent 75%)",
+        }}
+      />
 
-        {/* Main Content - Centered */}
-        <div className="relative z-10 flex flex-col items-center justify-center mt-10 sm:mt-16 w-full px-6 sm:px-10 lg:px-20">
-          {/* Big Headline with Profile Image */}
-          <div className="relative">
-            {/* Profile Image - sits behind the text */}
-            <div
-              className="hero-profile absolute top-1/2 left-0 -translate-x-[10%] -translate-y-[40%] w-[clamp(110px,22vw,320px)] aspect-[3/4] z-0"
-              style={{ opacity: 0.85 }}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-          
-          {/* Name badge */}
-<div
-  className="absolute -top-16 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap"
-  style={{
-    backgroundColor: "rgba(240, 237, 230, 0.95)",
-    boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
-  }}
->
-  <span
-    className="w-2.5 h-2.5 rounded-full shrink-0"
-    style={{ backgroundColor: "#a3e635" }}
-  />
-  <span
-    className="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-neutral-700 font-medium"
-    style={{ fontFamily: "sans-serif" }}
-  >
-    Kendrick Serrano
-  </span>
-</div>
+      {/* Soft accent bloom */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-40 -left-40 w-[700px] h-[700px] rounded-full opacity-[0.10] blur-3xl"
+        style={{ background: "var(--accent)" }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full opacity-[0.06] blur-3xl"
+        style={{ background: "var(--accent)" }}
+      />
 
-              <img
-                src="/images/profile.png"
-                alt="Kendrick Serrano"
-                className="w-full h-full object-cover grayscale-[30%]"
-                style={{
-                  maskImage: "linear-gradient(to bottom, black 70%, transparent 100%)",
-                  WebkitMaskImage: "linear-gradient(to bottom, black 70%, transparent 100%)",
-                }}
-              />
-            </div>
+      <div className="container-custom relative">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="mb-8 flex items-center gap-2"
+        >
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60 animate-ping" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          </span>
+          <span className="mono-label">Available for new work — 2026</span>
+        </motion.div>
 
-            <h1
-              className="relative z-10"
-              style={{
-                fontFamily: "var(--font-display), 'Cinzel', 'Trajan Pro', serif",
-                fontWeight: 100,
-                lineHeight: 0.9,
-                color: "#F0EDE6",
-                letterSpacing: "-0.12em"
-              }}
-            >
-              <span className="hero-line block text-[clamp(2rem,8vw,7rem)] ml-4 sm:ml-12 md:ml-20">
-                LET&apos;S CREATE
-              </span>
-              <span className="hero-line block text-[clamp(2rem,8vw,7rem)] ml-8 sm:ml-[12vw] md:ml-[20vw]">
-                PROJECTS THAT
-              </span>
-              <span className="hero-line block text-[clamp(2rem,8vw,7rem)] ml-12 sm:ml-24 md:ml-40">
-                STAND OUT.
-              </span>
-            </h1>
-          </div>
+        <h1
+          className="font-semibold tracking-display leading-[0.9] text-fg mb-10 max-w-5xl"
+          style={{ fontSize: "clamp(3rem, 12vw, 9rem)" }}
+        >
+          <ScrambleText
+            text="Building tools"
+            duration={900}
+            as="span"
+            className="block"
+          />
+          <span className="block text-fg-muted">
+            <ScrambleText text="people enjoy" duration={900} delay={500} />
+            <span className="text-accent">.</span>
+          </span>
+        </h1>
 
-          {/* Subtitle */}
-          <p
-            className="mt-8 sm:mt-12 text-center text-sm sm:text-base text-white/60 max-w-md leading-relaxed"
-            style={{ fontFamily: "sans-serif", letterSpacing: "0.02em" }}
-          >
-            Reach out for collaborations, commissions,
-            <br />
-            or just to connect.
-          </p>
+        <motion.p
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 1.4, ease: [0.16, 1, 0.3, 1] }}
+          className="text-lg sm:text-xl text-fg-muted leading-relaxed max-w-xl mb-12"
+        >
+          I&apos;m Kendrick — a full-stack developer in Zamboanga, Philippines.
+          I design and ship refined, high-craft web experiences with React,
+          TypeScript, and a quiet obsession with details.
+        </motion.p>
 
-          {/* Contact Info */}
-          <div className="mt-10 sm:mt-14 flex flex-col items-center gap-4">
-            <a
-              href="mailto:kendrickserrano7@gmail.com"
-              className="contact-item text-[clamp(0.9rem,2.5vw,1.4rem)] font-medium tracking-wide text-white/90 hover:text-white transition-colors duration-300 lowercase"
-              style={{
-                fontFamily: "var(--font-serif), 'Cormorant Garamond', Georgia, serif",
-                letterSpacing: "0.01em",
-              }}
-            >
-              kendrickserrano7@gmail.com
-            </a>
-            <p
-              className="contact-item text-[clamp(0.9rem,2.5vw,1.3rem)] text-white/70"
-              style={{
-                fontFamily: "var(--font-display), 'Cinzel', 'Trajan Pro', serif",
-                letterSpacing: "0.05em",
-              }}
-            >
-              Zamboanga City, Philippines
-            </p>
-          </div>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 1.7, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-wrap items-center gap-4"
+        >
+          <Link href="/projects">
+            <MagneticButton className="btn-primary" type="button">
+              See selected work
+              <span aria-hidden>→</span>
+            </MagneticButton>
+          </Link>
+          <Link href="/contact" className="link-underline text-sm">
+            Or get in touch
+          </Link>
+        </motion.div>
 
-        {/* Bottom Social Links */}
-        <div className="absolute bottom-0 left-0 right-0 z-30">
-          <div className="flex items-center justify-between px-4 sm:px-10 lg:px-16 py-4 sm:py-5 gap-3">
-            <a
-              href="#"
-              className="social-link text-[10px] sm:text-sm uppercase tracking-[0.18em] sm:tracking-[0.2em] text-white/50 hover:text-white transition-colors duration-300"
-            >
-              Instagram
-            </a>
+        {/* Scroll indicator */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8, delay: 2.2 }}
+          className="absolute bottom-0 left-6 sm:left-8 lg:left-10 flex items-center gap-3"
+        >
+          <span className="mono-label">Scroll</span>
+          <span aria-hidden className="relative block w-6 h-px bg-[color:var(--border-strong)] overflow-hidden">
+            <span
+              className="absolute inset-0 bg-[var(--accent)]"
+              style={{ animation: "scroll-line 2.4s ease-in-out infinite" }}
+            />
+          </span>
+        </motion.div>
+      </div>
 
-            <div className="flex items-center gap-3 sm:gap-8">
-              <a
-                href="https://www.linkedin.com/in/kendrick-serrano-b0a4853b1"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="social-link text-[10px] sm:text-sm uppercase tracking-[0.18em] sm:tracking-[0.2em] text-white/50 hover:text-white transition-colors duration-300"
-              >
-                LinkedIn
-              </a>
-
-              <a
-                href="/CV/CV.pdf"
-                download="Kendrick-Serrano-CV.pdf"
-                aria-label="Download CV (PDF)"
-                className="social-link group inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 border border-white/25 text-white/80 text-[10px] sm:text-sm uppercase tracking-[0.18em] sm:tracking-[0.2em] hover:text-white hover:border-white hover:bg-white/5 transition-all duration-300"
-              >
-                <span>Resume</span>
-                <svg
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="transition-transform duration-300 group-hover:translate-y-0.5"
-                  aria-hidden="true"
-                >
-                  <path d="M12 3v13" />
-                  <path d="m6 11 6 6 6-6" />
-                  <path d="M5 21h14" />
-                </svg>
-              </a>
-            </div>
-          </div>
-        </div>
-
-      </section>
-    </>
+      <style jsx>{`
+        @keyframes scroll-line {
+          0%   { transform: translateX(-100%); }
+          50%  { transform: translateX(0%); }
+          100% { transform: translateX(100%); }
+        }
+      `}</style>
+    </section>
   );
 }

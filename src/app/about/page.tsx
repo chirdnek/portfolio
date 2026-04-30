@@ -1,15 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import ExperienceTimeline from "@/components/sections/ExperienceTimeline";
-import DarkDimensionFX from "@/components/effects/DarkDimensionFx";
-import MandalaPortal from "@/components/effects/MandalaPortalClient";
-import EldritchHeading from "@/components/effects/EldritchHeading";
-import "@/components/effects/DarkDimension.css";
 
 export const metadata: Metadata = {
-  title: "About | KENTO_O — Dark Dimension",
+  title: "About | KENTO_O",
   description:
-    "An emissary between code and chaos. Learn more about me, my background, and what drives my work.",
+    "Creative developer building fast, accessible, well-crafted web experiences.",
 };
 
 const experiences = [
@@ -36,132 +32,203 @@ const experiences = [
   },
 ];
 
+const focusAreas = ["React", "TypeScript", "Next.js", "System design"];
+
 export default function AboutPage() {
   return (
-    <div className="dd-root" data-testid="about-page-root">
-      {/* Global Dark Dimension FX — particles, crimson haze, runes */}
-      <DarkDimensionFX />
-
+    <div data-testid="about-page-root">
       {/* ───────────────────── INTRO ───────────────────── */}
-      <section className="pt-32 pb-24 relative overflow-hidden" data-testid="about-intro">
-        {/* Rotating mandala portal behind headline */}
+      <section
+        className="relative pt-32 pb-32 overflow-hidden"
+        data-testid="about-intro"
+      >
+        {/* Faint accent gradient — single soft glow, not theatrical */}
         <div
-          className="pointer-events-none absolute -top-24 -right-24 md:-right-40 opacity-60 mix-blend-screen"
           aria-hidden
-        >
-          <MandalaPortal size={720} spinDuration={90} />
-        </div>
+          className="pointer-events-none absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full opacity-[0.08] blur-3xl"
+          style={{ background: "var(--accent, #4d65ff)" }}
+        />
 
-        {/* Secondary counter-rotating sling ring */}
-        <div
-          className="pointer-events-none absolute top-40 -left-32 opacity-30 mix-blend-screen"
-          aria-hidden
-        >
-          <MandalaPortal size={420} spinDuration={140} reverse />
-        </div>
-
-        <div className="container-custom relative z-10">
-          <div className="max-w-3xl">
-            <p className="dd-eyebrow mb-6">
-              <span className="dd-eyebrow__dot" aria-hidden />
-              Transmissions from the Dark Dimension
-            </p>
-
-            <h1
-              className="dd-display mb-10"
-              style={{ fontSize: "clamp(2.75rem, 9vw, 6rem)" }}
-            >
-              <EldritchHeading text="About Me" />
-            </h1>
-
-            <div className="space-y-6 text-lg leading-relaxed dd-body">
-              <p>
-                Hi, I&apos;m{" "}
-                <span className="dd-name">KENTO_O</span>
-                {" "}— a creative developer based in{" "}
-                <span className="dd-placeholder">[City, Country]</span>. I build
-                fast, accessible, and well-crafted web experiences.
-              </p>
-              <p>
-                I&apos;ve been writing code professionally for over 5 years,
-                working across the full stack with a particular love for{" "}
-                <em className="dd-em">React</em>,{" "}
-                <em className="dd-em">TypeScript</em>, and clean system design.
-                I care deeply about developer experience and shipping things
-                that actually work for users.
-              </p>
-              <p>
-                Outside of work I enjoy{" "}
-                <span className="dd-placeholder">[your hobbies]</span>, which
-                keeps me sane and often sparks unexpected ideas for projects
-                that pierce the veil.
-              </p>
-            </div>
-
-            <div className="mt-12 flex flex-wrap items-center gap-8">
-              <Link href="/contact" className="dd-btn-primary">
-                <span className="dd-btn-primary__glyph" aria-hidden />
-                <span>Contact Me</span>
-                <span className="dd-btn-primary__arrow" aria-hidden>→</span>
-              </Link>
-              <a
-                href="/CV/CV.pdf"
-                download="CV.pdf"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="dd-link-underline"
+        <div className="container-custom relative">
+          {/* Magazine-style top index row */}
+          <div className="flex items-center justify-between mb-16 text-[11px] uppercase tracking-[0.32em] text-white/40">
+            <span className="flex items-center gap-3">
+              <span aria-hidden className="block w-6 h-px bg-white/30" />
+              01 — Profile
+            </span>
+            <span className="flex items-center gap-2">
+              <span
+                aria-hidden
+                className="relative inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"
               >
-                Download CV
-              </a>
+                <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-60" />
+              </span>
+              Available for work
+            </span>
+          </div>
+
+          {/* Editorial heading */}
+          <h1
+            className="font-bold tracking-tight leading-[0.95] mb-16"
+            style={{
+              fontSize: "clamp(3rem, 11vw, 8.5rem)",
+              letterSpacing: "-0.035em",
+            }}
+          >
+            About{" "}
+            <span
+              className="italic font-light"
+              style={{
+                fontFamily: "var(--font-geist-mono), Georgia, serif",
+              }}
+            >
+              me.
+            </span>
+          </h1>
+
+          {/* Two-column editorial body: bio left, meta panel right */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20">
+            {/* Bio column */}
+            <div className="lg:col-span-7 space-y-6 text-base sm:text-lg leading-[1.75] text-white/65">
+              <p className="text-xl sm:text-2xl text-white leading-snug font-light">
+                I&apos;m Kendrick — a creative developer based in Zamboanga
+                City, Philippines. I build fast, accessible, and well-crafted
+                web experiences.
+              </p>
+              <p>
+                Five years of professional experience across the full stack,
+                with a focus on React, TypeScript, and clean system design.
+                I care about developer experience and shipping things that
+                work for users.
+              </p>
+              <p>
+                Outside of work, playing mobile games keeps me grounded and
+                often sparks ideas for what to build next.
+              </p>
+
+              <div className="pt-10 flex flex-wrap items-center gap-x-10 gap-y-6">
+                <Link href="/contact" className="btn-primary">
+                  Contact me
+                </Link>
+                <a
+                  href="/CV/CV.pdf"
+                  download="CV.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="link-underline"
+                >
+                  Download CV
+                </a>
+              </div>
             </div>
+
+            {/* Meta panel — magazine sidebar */}
+            <aside className="lg:col-span-5 lg:pl-12 lg:border-l lg:border-white/10">
+              <dl className="space-y-8">
+                <MetaRow label="Based in" value="Zamboanga City, PH" />
+                <MetaRow label="Experience" value="5+ years, full stack" />
+                <MetaRow label="Currently" value="Open to opportunities" />
+
+                <div>
+                  <dt className="text-[10px] uppercase tracking-[0.32em] text-white/35 mb-4">
+                    Focus
+                  </dt>
+                  <dd className="flex flex-wrap gap-2">
+                    {focusAreas.map((tag) => (
+                      <span
+                        key={tag}
+                        className="text-xs px-3 py-1.5 border border-white/15 rounded-full text-white/70 hover:text-white hover:border-white/40 transition-colors"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </dd>
+                </div>
+              </dl>
+            </aside>
           </div>
         </div>
-
-        {/* Dark-matter horizon at the bottom of hero */}
-        <div className="dd-horizon" aria-hidden />
       </section>
 
-      {/* ───────────────────── EXPERIENCE TIMELINE ───────────────────── */}
+      {/* ───────────────────── EXPERIENCE ───────────────────── */}
+      <SectionDivider index="02" label="Trajectory" />
       <ExperienceTimeline experiences={experiences} />
 
       {/* ───────────────────── EDUCATION ───────────────────── */}
-      <section className="py-32 relative overflow-hidden">
-        <div
-          className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.08]"
-          aria-hidden
-        >
-          <MandalaPortal size={900} spinDuration={220} />
-        </div>
-
-        <div className="container-custom relative z-10">
-          <h2 className="dd-section-title">
-            <span className="dd-section-title__mark" aria-hidden>✦</span>
-            Education
-          </h2>
-
-          <div className="mt-14 dd-grimoire max-w-2xl">
-            <div className="dd-grimoire__corner dd-grimoire__corner--tl" aria-hidden />
-            <div className="dd-grimoire__corner dd-grimoire__corner--tr" aria-hidden />
-            <div className="dd-grimoire__corner dd-grimoire__corner--bl" aria-hidden />
-            <div className="dd-grimoire__corner dd-grimoire__corner--br" aria-hidden />
-
-            <div className="flex flex-col sm:flex-row gap-8 p-10">
-              <div className="sm:w-44 shrink-0">
-                <div className="dd-year-stamp">2014 — 2018</div>
+      <SectionDivider index="03" label="Education" />
+      <section className="py-32">
+        <div className="container-custom">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+            <div className="lg:col-span-3">
+              <div
+                className="text-white/30 font-light leading-none"
+                style={{
+                  fontSize: "clamp(2rem, 4vw, 3rem)",
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                2014
+                <span className="block text-white/20 text-base mt-1">
+                  — 2018
+                </span>
               </div>
-              <div>
-                <h3 className="dd-education-degree">BS Information Technology</h3>
-                <p className="dd-education-school">Western Mindanao State University</p>
-                <p className="dd-education-desc">
-                  Graduated with honors. Focused on algorithms, software
-                  engineering, and distributed systems — with a personal minor
-                  in the forbidden arts of frontend performance.
-                </p>
-              </div>
+            </div>
+
+            <div className="lg:col-span-9 lg:pl-12 lg:border-l lg:border-white/10">
+              <p className="text-[10px] uppercase tracking-[0.32em] text-white/40 mb-3">
+                Bachelor&apos;s Degree
+              </p>
+              <h3
+                className="font-medium mb-3"
+                style={{
+                  fontSize: "clamp(1.5rem, 3vw, 2rem)",
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                BS Information Technology
+              </h3>
+              <p className="text-white/70 mb-6 text-lg">
+                Western Mindanao State University
+              </p>
+              <p className="text-white/45 leading-relaxed max-w-xl">
+                Graduated with honors. Focused on algorithms, software
+                engineering, and distributed systems.
+              </p>
             </div>
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+/* ───────────────────── helpers ───────────────────── */
+
+function MetaRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-[10px] uppercase tracking-[0.32em] text-white/35 mb-2">
+        {label}
+      </dt>
+      <dd className="text-base text-white/85">{value}</dd>
+    </div>
+  );
+}
+
+function SectionDivider({
+  index,
+  label,
+}: {
+  index: string;
+  label: string;
+}) {
+  return (
+    <div className="container-custom">
+      <div className="flex items-center gap-6 py-8 border-t border-white/10 text-[11px] uppercase tracking-[0.32em] text-white/40">
+        <span>{index}</span>
+        <span aria-hidden className="flex-1 h-px bg-white/10" />
+        <span>{label}</span>
+      </div>
     </div>
   );
 }

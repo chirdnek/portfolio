@@ -2,113 +2,110 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
-import ThemeToggle from "@/components/theme/ThemeToggle";
+import { useEffect, useState } from "react";
+import MagneticButton from "@/components/ui/MagneticButton";
 
 const navLinks = [
-  { href: "/", label: "Home" },
+  { href: "/projects", label: "Work" },
   { href: "/about", label: "About" },
-  { href: "/projects", label: "Projects" },
-  { href: "/blog", label: "Blog" },
-  { href: "/contact", label: "Contact" },
+  { href: "/blog", label: "Writing" },
 ];
 
 export default function Navbar() {
   const pathname = usePathname();
+  const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [showNavbar, setShowNavbar] = useState(false);
 
-  // Home page: hide until Hero is visible.
-  // /world route: always hidden (fullscreen portal-world experience).
-  // All other routes: always show.
   useEffect(() => {
-    if (pathname?.startsWith("/world")) {
-      setShowNavbar(false);
-      return;
-    }
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
-    const isHome = pathname === "/";
-
-    if (!isHome) {
-      setShowNavbar(true);
-      return;
-    }
-
-    const handleScroll = () => {
-      const heroElement = document.getElementById("hero-section");
-      if (!heroElement) {
-        setShowNavbar(false);
-        return;
-      }
-      const rect = heroElement.getBoundingClientRect();
-      setShowNavbar(rect.top <= window.innerHeight && rect.bottom >= 0);
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
+  useEffect(() => {
+    setMenuOpen(false);
   }, [pathname]);
 
   return (
-    <header data-suck className={`fixed top-3 inset-x-0 z-50 bg-transparent transition-opacity duration-300 ${showNavbar ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}>
-      <div className="container-custom flex items-center justify-center h-16 relative">
-
-        {/* Desktop Nav - Centered */}
-        <nav className="hidden md:flex items-center gap-8 justify-center">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={`link-underline text-sm font-medium tracking-wide uppercase ${
-                pathname === link.href
-                  ? "!text-[var(--foreground)] after:scale-x-100"
-                  : ""
-              }`}
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-
-        {/* Right Side - Theme Toggle (Absolute positioning) */}
-        <div className="hidden md:flex absolute right-0">
-          <ThemeToggle />
-        </div>
-
-        {/* Mobile Hamburger */}
-        <button
-          className="md:hidden text-white/50 hover:text-white transition-colors duration-300"
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-label="Toggle menu"
+    <header
+      className={`fixed top-0 inset-x-0 z-40 transition-all duration-300 ${
+        scrolled
+          ? "bg-[rgba(10,10,10,0.7)] backdrop-blur-xl border-b border-subtle"
+          : "bg-transparent"
+      }`}
+    >
+      <div className="container-custom flex items-center justify-between h-16">
+        {/* Wordmark */}
+        <Link
+          href="/"
+          className="text-fg font-semibold text-base tracking-tight hover:text-accent transition-colors"
         >
-          {menuOpen ? (
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          ) : (
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          )}
-        </button>
-      </div>
+          kendrick<span className="text-accent">.</span>
+        </Link>
 
-      {/* Mobile Menu */}
-      {menuOpen && (
-        <div className="md:hidden bg-black/95 backdrop-blur-lg border-t border-white/5">
-          <nav className="container-custom py-8 flex flex-col gap-6">
-            {navLinks.map((link) => (
+        {/* Desktop center nav */}
+        <nav className="hidden md:flex items-center gap-8">
+          {navLinks.map((link) => {
+            const active = pathname === link.href || pathname?.startsWith(link.href + "/");
+            return (
               <Link
                 key={link.href}
                 href={link.href}
-                onClick={() => setMenuOpen(false)}
-                className={`text-sm font-medium uppercase tracking-wide transition-colors duration-300 ${
-                  pathname === link.href ? "text-white" : "text-white/35 hover:text-white"
+                className={`text-sm transition-colors ${
+                  active ? "text-fg" : "text-fg-muted hover:text-fg"
                 }`}
               >
                 {link.label}
               </Link>
-            ))}
+            );
+          })}
+        </nav>
+
+        {/* Right CTA */}
+        <div className="hidden md:flex items-center gap-2">
+          <Link href="/contact">
+            <MagneticButton className="btn-primary" type="button">
+              Get in touch
+            </MagneticButton>
+          </Link>
+        </div>
+
+        {/* Mobile hamburger */}
+        <button
+          onClick={() => setMenuOpen(!menuOpen)}
+          className="md:hidden text-fg-muted hover:text-fg transition-colors"
+          aria-label="Toggle menu"
+        >
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            {menuOpen ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 7h16M4 12h16M4 17h16" />
+            )}
+          </svg>
+        </button>
+      </div>
+
+      {/* Mobile menu */}
+      {menuOpen && (
+        <div className="md:hidden border-t border-subtle bg-[rgba(10,10,10,0.95)] backdrop-blur-xl">
+          <nav className="container-custom py-6 flex flex-col gap-4">
+            {navLinks.map((link) => {
+              const active = pathname === link.href || pathname?.startsWith(link.href + "/");
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`text-base ${active ? "text-fg" : "text-fg-muted"}`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+            <Link href="/contact" className="btn-primary mt-2 self-start">
+              Get in touch
+            </Link>
           </nav>
         </div>
       )}

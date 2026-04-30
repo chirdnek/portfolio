@@ -2,70 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Dark theme (default) */
+/* ─────────────────────────────────────────────────────────
+   Linear / Vercel — refined dark
+   Single accent (#4d65ff), near-black base, off-white text
+   ───────────────────────────────────────────────────────── */
 :root {
-  --background: #000000;
-  --foreground: #ffffff;
-  --fg-muted: rgba(255, 255, 255, 0.55);
-  --accent: #ff6a00;
-  --accent-hover: #ee9b00;
-  --accent-amber: rgba(255, 170, 60, 0.9);
-  --accent-amber-muted: rgba(255, 200, 120, 0.45);
-  --card-border: rgba(255, 255, 255, 0.1);
-  --divider: rgba(255, 255, 255, 0.05);
-  --bg-gradient: radial-gradient(ellipse at 50% 50%, #1c0800 0%, #0d0400 45%, #000 100%);
-}
-
-/* Light theme */
-.light {
-  --background: #fafafa;
-  --foreground: #0a0a0a;
-  --fg-muted: rgba(10, 10, 10, 0.55);
-  --accent: #ff6a00;
-  --accent-hover: #ee9b00;
-  --accent-amber: rgba(200, 90, 0, 0.9);
-  --accent-amber-muted: rgba(200, 90, 0, 0.55);
-  --card-border: rgba(0, 0, 0, 0.1);
-  --divider: rgba(0, 0, 0, 0.06);
-  --bg-gradient: #fafafa;
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --fg-muted: rgba(237, 237, 237, 0.55);
+  --fg-faint: rgba(237, 237, 237, 0.35);
+  --accent: #4d65ff;
+  --accent-hover: #6478ff;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --muted: #888;
+  --noise-opacity: 0.012;
 }
 
 @layer base {
   body {
-    @apply antialiased transition-colors duration-300;
-    background: var(--bg-gradient);
-    background-attachment: fixed;
+    @apply antialiased;
+    background: var(--background);
     color: var(--foreground);
-    font-family: var(--font-serif), "Cormorant Garamond", Georgia, "Times New Roman", serif;
+    font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
     font-weight: 400;
-    letter-spacing: 0.01em;
+    letter-spacing: -0.01em;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-serif), "Cormorant Garamond", Georgia, serif;
-    letter-spacing: 0.03em;
+    font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.02em;
+    font-weight: 600;
   }
 
-  @keyframes float-ember {
-    0%   { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
-    8%   { opacity: var(--ember-op, 0.5); }
-    90%  { opacity: var(--ember-op, 0.5); }
-    100% { transform: translateY(-120vh) translateX(30px) scale(0.4); opacity: 0; }
-  }
-
-  * {
-    @apply box-border;
-  }
+  * { @apply box-border; }
 
   html {
-    scroll-behavior: smooth;
-    /* Hide scrollbar but keep scrolling */
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
+  html::-webkit-scrollbar { display: none; }
 
-  html::-webkit-scrollbar {
-    display: none;
+  ::selection {
+    background: var(--accent);
+    color: #fff;
   }
 }
 
@@ -74,114 +54,95 @@
     @apply max-w-6xl mx-auto px-6 sm:px-8 lg:px-10;
   }
 
-  /* Primary CTA */
+  /* Primary CTA — flat, electric */
   .btn-primary {
-    @apply inline-flex items-center justify-center px-8 py-3.5 rounded-none bg-[#ff6a00] text-white text-sm font-medium uppercase tracking-widest
-           hover:bg-[#ee9b00] transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-[#ff6a00] focus:ring-offset-2;
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-md
+           text-sm font-medium transition-colors duration-200
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2;
+    background: var(--accent);
+    color: #fff;
     focus-ring-offset-color: var(--background);
   }
+  .btn-primary:hover { background: var(--accent-hover); }
 
-  /* Fire gradient text — for emphasis words like AWAKENING */
-  .text-fire {
-    background: linear-gradient(90deg, #ff6a00 0%, #ee9b00 40%, #94d82d 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    color: transparent;
+  /* Secondary / ghost */
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-md
+           text-sm font-medium transition-colors duration-200;
+    border: 1px solid var(--border-strong);
+    color: var(--foreground);
   }
+  .btn-ghost:hover { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.28); }
 
-  /* Amber italic accent — for emphasized serif words like ARROGANCE */
-  .text-amber {
-    color: var(--accent-amber);
-    font-style: italic;
-  }
-
-  /* Monospace tracking label — for CHAPTER*01, 2016 */
+  /* Mono caption — tiny labels */
   .mono-label {
-    font-family: var(--font-mono), "Courier New", ui-monospace, monospace;
-    font-size: 10px;
-    letter-spacing: 0.22em;
-    color: var(--accent);
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--fg-muted);
     text-transform: uppercase;
   }
 
-  /* Text link with animated underline */
+  /* Animated underline link */
   .link-underline {
-    @apply relative inline-block transition-colors duration-300;
+    @apply relative inline-block transition-colors duration-200;
     color: var(--fg-muted);
   }
-
-  .link-underline:hover {
-    color: var(--foreground);
-  }
-
+  .link-underline:hover { color: var(--foreground); }
   .link-underline::after {
     content: "";
     @apply absolute bottom-0 left-0 w-full h-px origin-left scale-x-0 transition-transform duration-300;
     background-color: var(--foreground);
   }
-
-  .link-underline:hover::after {
-    @apply scale-x-100;
-  }
+  .link-underline:hover::after { @apply scale-x-100; }
 
   .section-title {
-    @apply text-4xl sm:text-5xl font-bold mb-4 tracking-tight;
+    @apply text-3xl sm:text-4xl font-semibold mb-4;
     color: var(--foreground);
+    letter-spacing: -0.02em;
   }
 
   .section-subtitle {
-    @apply text-lg leading-relaxed max-w-2xl;
+    @apply text-base sm:text-lg leading-relaxed max-w-2xl;
     color: var(--fg-muted);
   }
 
+  /* Card — subtle border, accent on hover */
   .card {
-    @apply rounded-none p-6 transition-all duration-300
-           hover:border-[#ff6a00]/50;
-    border: 1px solid var(--card-border);
-    background: transparent;
+    @apply rounded-xl p-6 transition-all duration-300;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.012);
   }
-}
-
-/* Marquee animation */
-@keyframes marquee {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
+  .card:hover {
+    border-color: rgba(77, 101, 255, 0.45);
+    background: rgba(255, 255, 255, 0.02);
   }
 }
 
 @layer utilities {
-  .animate-marquee {
-    animation: marquee 20s linear infinite;
-  }
-  .font-display {
-    font-family: var(--font-display), "Cinzel", "Trajan Pro", serif;
-  }
-  .font-serif-italic {
-    font-family: var(--font-serif), "Cormorant Garamond", Georgia, serif;
-    font-style: italic;
-  }
+  .tracking-display { letter-spacing: -0.04em; }
+  .text-fg { color: var(--foreground); }
+  .text-fg-muted { color: var(--fg-muted); }
+  .text-fg-faint { color: var(--fg-faint); }
+  .text-accent { color: var(--accent); }
+  .border-subtle { border-color: var(--border); }
+  .bg-bg { background: var(--background); }
 }
 
-@keyframes strangeSpinSlow {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+/* ─────────────────────────────────────────────────────────
+   View Transitions API — soft fade between routes
+   ───────────────────────────────────────────────────────── */
+@keyframes vt-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-@keyframes strangeSpinReverse {
-  from { transform: rotate(360deg); }
-  to   { transform: rotate(0deg); }
+@keyframes vt-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
 }
-@keyframes strangeCorePulse {
-  0%, 100% { opacity: 0.85; transform: scale(1); }
-  50%      { opacity: 1;    transform: scale(1.04); }
+::view-transition-old(root) {
+  animation: vt-fade-out 200ms ease both;
 }
-@keyframes strangeScrollIndicator {
-  0%, 100% { transform: scaleY(0.3); transform-origin: top; opacity: 0.4; }
-  50%      { transform: scaleY(1);   transform-origin: top; opacity: 1; }
+::view-transition-new(root) {
+  animation: vt-fade-in 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-
-/* GSAP handles all scroll-triggered animations via data-reveal attributes.
-   See ScrollAnimations.tsx for the controller. */

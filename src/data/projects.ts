@@ -12,67 +12,54 @@ export interface Project {
 
 export const projects: Project[] = [
   {
-    slug: "project-alpha",
-    title: "Project Alpha",
-    description: "A full-stack SaaS application with user authentication, payments, and a dashboard.",
+    slug: "lumen",
+    title: "Lumen",
+    description:
+      "A real-time analytics dashboard for tracking product usage, with sub-second query response and live charts.",
     longDescription:
-      "Project Alpha is a complete SaaS platform built from the ground up. It features secure user authentication with JWT, Stripe payment integration for subscriptions, and a real-time analytics dashboard. The backend uses PostgreSQL with Prisma ORM, and the frontend is built with Next.js and TypeScript for type safety across the stack.",
-    tags: ["Next.js", "TypeScript", "Stripe", "PostgreSQL"],
+      "Lumen is a self-serve analytics dashboard built for small product teams that have outgrown spreadsheets but don't need a full data platform. It ingests events via a typed SDK, stores them in a columnar warehouse, and renders sub-second charts on top. The frontend is Next.js + React Server Components for fast initial loads, with client-side updates streamed over a WebSocket. Built end-to-end in two months.",
+    tags: ["Next.js", "TypeScript", "PostgreSQL", "WebSockets"],
+    image: "/images/projects/lumen.png",
     href: "#",
     repo: "#",
     featured: true,
   },
   {
-    slug: "project-beta",
-    title: "Project Beta",
-    description: "An open-source CLI tool that automates repetitive developer tasks.",
+    slug: "atlas",
+    title: "Atlas",
+    description:
+      "A content management system designed for editors, not engineers — block-based authoring with live preview.",
     longDescription:
-      "Project Beta is a developer productivity CLI that automates common workflows — scaffolding new projects, running lint/format/test in sequence, and generating boilerplate code from templates. Written in TypeScript with a plugin architecture so users can extend it with custom commands.",
-    tags: ["Node.js", "TypeScript", "CLI"],
-    href: undefined,
-    repo: "#",
-    featured: true,
-  },
-  {
-    slug: "project-gamma",
-    title: "Project Gamma",
-    description: "A real-time collaborative whiteboard built with WebSockets.",
-    longDescription:
-      "Project Gamma is a collaborative whiteboard where multiple users can draw, add sticky notes, and brainstorm together in real time. It uses Socket.io for WebSocket communication, the Canvas API for rendering, and a Node.js backend that syncs state across all connected clients with conflict resolution.",
-    tags: ["React", "Socket.io", "Canvas API"],
+      "Atlas is a headless CMS focused on the editor experience. Authors compose pages from typed content blocks, see a pixel-accurate preview as they type, and publish with one click. The schema is defined in TypeScript, so the same types power the editor, the API, and the rendered site. I built the block editor on top of Tiptap and added inline AI suggestions for tone and length.",
+    tags: ["Next.js", "TypeScript", "Tiptap", "tRPC"],
+    image: "/images/projects/atlas.png",
     href: "#",
     repo: "#",
     featured: true,
   },
   {
-    slug: "project-delta",
-    title: "Project Delta",
-    description: "A REST API service for managing inventory with role-based access control.",
+    slug: "pulse",
+    title: "Pulse",
+    description:
+      "An infrastructure status page that auto-detects incidents and writes the first draft of the post-mortem.",
     longDescription:
-      "Project Delta is a backend API for inventory management built for a logistics company. It supports role-based access control (admin, manager, viewer), full CRUD operations on inventory items, audit logging, and CSV export. Built with Express and MongoDB, authenticated via JWT with refresh token rotation.",
-    tags: ["Node.js", "Express", "MongoDB", "JWT"],
-    href: undefined,
-    repo: "#",
-  },
-  {
-    slug: "project-epsilon",
-    title: "Project Epsilon",
-    description: "A Python data pipeline that processes and visualizes large CSV datasets.",
-    longDescription:
-      "Project Epsilon is a data processing pipeline that ingests large CSV files, cleans and transforms the data using Pandas, and serves interactive visualizations through a FastAPI web interface. It runs in Docker containers and can process datasets with millions of rows efficiently using chunked processing.",
-    tags: ["Python", "Pandas", "FastAPI", "Docker"],
+      "Pulse watches your services, opens an incident channel when latency or error budgets are breached, and drafts a timeline post-mortem from the actual signals — alerts, deploys, traces. The first draft is usually 80% there, which is the hard part. Built with a Go backend for ingestion and a React frontend for the public status page and the internal incident view.",
+    tags: ["Go", "React", "PostgreSQL", "OpenTelemetry"],
+    image: "/images/projects/pulse.png",
     href: "#",
     repo: "#",
+    featured: true,
   },
   {
-    slug: "project-zeta",
-    title: "Project Zeta",
-    description: "A mobile-first e-commerce storefront with cart, checkout, and order tracking.",
+    slug: "forge",
+    title: "Forge",
+    description:
+      "A developer CLI that scaffolds, lints, and ships TypeScript monorepos with one command per task.",
     longDescription:
-      "Project Zeta is a headless e-commerce frontend powered by the Shopify Storefront API. It features a mobile-first responsive design, persistent cart with local storage, real-time inventory checks, and order tracking. Built with Next.js and styled with Tailwind CSS for rapid iteration.",
-    tags: ["Next.js", "Tailwind CSS", "Shopify API"],
-    href: "#",
-    repo: undefined,
+      "Forge is the toolchain I wished existed when I was setting up my fifth monorepo. One command to scaffold a new package with the right tsconfig, lint config, and CI wiring. Another to run all tests across the workspace with smart caching. A third to release everything that changed. Plugin architecture so teams can extend it with their own commands.",
+    tags: ["TypeScript", "Node.js", "CLI", "pnpm"],
+    image: "/images/projects/forge.png",
+    repo: "#",
   },
 ];
 
