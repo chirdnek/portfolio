@@ -65,14 +65,14 @@ export default function MySkills() {
         {/* Section nav indicator */}
         
         <div className="flex items-center gap-4 mb-6 ">
-          <span className="text-xs font-mono text-[#ff6a00] tracking-wider ml-4">004</span>
+          <span className="text-xs font-mono text-[#ff6a00] tracking-wider">004</span>
           <span className="w-12 h-px bg-[#ff6a00]/40" />
           <span className="text-xs uppercase tracking-[0.2em] text-[#ff6a00]">Skills</span>
         </div>
 
         {/* Glass card */}
         <div
-          className="rounded-2xl p-8 md:p-12 border border-white/[0.12] shadow-2xl"
+          className="rounded-2xl p-5 sm:p-8 md:p-12 border border-white/[0.12] shadow-2xl"
           style={{
             background:
               "linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)",
@@ -83,11 +83,11 @@ export default function MySkills() {
           }}
         >
           {/* Top row — Title + Description + Icons */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
             {/* Left — Title & Description */}
             <div>
               <h2
-                className="text-3xl md:text-4xl font-bold mb-6 leading-tight text-white"
+                className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 leading-tight text-white"
               >
                 <span className="italic font-light">My Professional</span>
                 <br />
@@ -105,26 +105,26 @@ export default function MySkills() {
 
             {/* Right — Skill category icons in a row */}
             <div
-              className="flex items-center justify-center gap-5 md:gap-8"
+              className="grid grid-cols-4 gap-2 sm:gap-5 md:gap-8 items-start justify-items-center"
             >
               {skillCategories.map((skill, idx) => {
                 const Icon = skill.icon;
                 return (
-                  <div key={idx} className="flex flex-col items-center gap-3">
+                  <div key={idx} className="flex flex-col items-center gap-2 sm:gap-3 min-w-0">
                     <div
-                      className="w-24 h-24 md:w-24 md:h-32 rounded-[50%] border border-white/15 flex items-center justify-center
-                                 hover:border-white/30 transition-all duration-300 group"
+                      className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-32 rounded-[50%] border border-white/15 flex items-center justify-center
+                                 hover:border-white/30 transition-all duration-300 group shrink-0"
                       style={{
                         background:
                           "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.06), transparent 70%)",
                       }}
                     >
                       <Icon
-                        size={36}
-                        className="text-white/70 group-hover:text-white transition-colors"
+                        size={28}
+                        className="text-white/70 group-hover:text-white transition-colors w-7 h-7 sm:w-9 sm:h-9"
                       />
                     </div>
-                    <span className="text-xs md:text-sm text-white/50 text-center">
+                    <span className="text-[10px] sm:text-xs md:text-sm text-white/50 text-center leading-tight">
                       {skill.label}
                     </span>
                   </div>
@@ -134,8 +134,8 @@ export default function MySkills() {
           </div>
 
           {/* Skill bars */}
-          <div className="mt-14 pt-10 border-t border-white/[0.08]">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-7">
+          <div className="mt-10 sm:mt-14 pt-8 sm:pt-10 border-t border-white/[0.08]">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-5 sm:gap-y-7">
               {skills.map((skill, idx) => (
                 <div key={idx}>
                   <div className="flex justify-between items-center mb-2.5">

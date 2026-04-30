@@ -24,7 +24,7 @@ export default function Hero() {
           <div className="relative">
             {/* Profile Image - sits behind the text */}
             <div
-              className="hero-profile absolute top-1/2 left-0 -translate-x-[15%] -translate-y-[40%] w-[clamp(160px,22vw,320px)] aspect-[3/4] z-0"
+              className="hero-profile absolute top-1/2 left-0 -translate-x-[10%] -translate-y-[40%] w-[clamp(110px,22vw,320px)] aspect-[3/4] z-0"
               style={{ opacity: 0.85 }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -67,16 +67,16 @@ export default function Hero() {
                 fontWeight: 100,
                 lineHeight: 0.9,
                 color: "#F0EDE6",
-                letterSpacing: "-0.20em"
+                letterSpacing: "-0.12em"
               }}
             >
-              <span className="hero-line block text-[clamp(2.5rem,8vw,7rem)] ml-20">
+              <span className="hero-line block text-[clamp(2rem,8vw,7rem)] ml-4 sm:ml-12 md:ml-20">
                 LET&apos;S CREATE
               </span>
-              <span className="hero-line block text-[clamp(2.5rem,8vw,7rem)] ml-[20vw]">
+              <span className="hero-line block text-[clamp(2rem,8vw,7rem)] ml-8 sm:ml-[12vw] md:ml-[20vw]">
                 PROJECTS THAT
               </span>
-              <span className="hero-line block text-[clamp(2.5rem,8vw,7rem)] ml-40">
+              <span className="hero-line block text-[clamp(2rem,8vw,7rem)] ml-12 sm:ml-24 md:ml-40">
                 STAND OUT.
               </span>
             </h1>
@@ -118,20 +118,20 @@ export default function Hero() {
 
         {/* Bottom Social Links */}
         <div className="absolute bottom-0 left-0 right-0 z-30">
-          <div className="flex items-center justify-between px-6 sm:px-10 lg:px-16 py-5">
+          <div className="flex items-center justify-between px-4 sm:px-10 lg:px-16 py-4 sm:py-5 gap-3">
             <a
               href="#"
-              className="social-link text-xs sm:text-sm uppercase tracking-[0.2em] text-white/50 hover:text-white transition-colors duration-300"
+              className="social-link text-[10px] sm:text-sm uppercase tracking-[0.18em] sm:tracking-[0.2em] text-white/50 hover:text-white transition-colors duration-300"
             >
               Instagram
             </a>
 
-            <div className="flex items-center gap-6 sm:gap-8">
+            <div className="flex items-center gap-3 sm:gap-8">
               <a
                 href="https://www.linkedin.com/in/kendrick-serrano-b0a4853b1"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="social-link text-xs sm:text-sm uppercase tracking-[0.2em] text-white/50 hover:text-white transition-colors duration-300"
+                className="social-link text-[10px] sm:text-sm uppercase tracking-[0.18em] sm:tracking-[0.2em] text-white/50 hover:text-white transition-colors duration-300"
               >
                 LinkedIn
               </a>
@@ -140,7 +140,7 @@ export default function Hero() {
                 href="/CV/CV.pdf"
                 download="Kendrick-Serrano-CV.pdf"
                 aria-label="Download CV (PDF)"
-                className="social-link group inline-flex items-center gap-2 px-4 py-2 border border-white/25 text-white/80 text-xs sm:text-sm uppercase tracking-[0.2em] hover:text-white hover:border-white hover:bg-white/5 transition-all duration-300"
+                className="social-link group inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 border border-white/25 text-white/80 text-[10px] sm:text-sm uppercase tracking-[0.18em] sm:tracking-[0.2em] hover:text-white hover:border-white hover:bg-white/5 transition-all duration-300"
               >
                 <span>Resume</span>
                 <svg

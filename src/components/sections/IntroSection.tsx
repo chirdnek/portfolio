@@ -763,11 +763,12 @@ export default function IntroSection() {
 
           <div data-suck className="fade-up" style={{
             fontFamily:"var(--font-cormorant), serif", fontWeight:600,
-            fontSize:"clamp(2.5rem,8vw,6rem)", color:"#ffffff",
-            letterSpacing:"0.15em", lineHeight:1, textTransform:"uppercase",
+            fontSize:"clamp(1.9rem,8vw,6rem)", color:"#ffffff",
+            letterSpacing:"clamp(0.04em, 1vw, 0.15em)", lineHeight:1, textTransform:"uppercase",
             textShadow:"0 2px 18px rgba(0,0,0,0.85), 0 0 40px rgba(0,0,0,0.7), 0 0 80px rgba(255,120,0,0.35)",
             animationDelay:"0.1s", display:"block",
             marginBottom:"-0.05em",
+            paddingLeft: "0.5rem", paddingRight: "0.5rem",
           }}>Kendrick</div>
 
           <div style={{ display:"flex", alignItems:"baseline", justifyContent:"center", gap:"0.2em" }}>
@@ -810,16 +811,15 @@ export default function IntroSection() {
         </div>
 
         {/* ── Bottom info bar — coordinates + address ── */}
-        <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none"
-          style={{ padding:"1rem 2.5rem", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+        <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none px-4 sm:px-10 py-3 sm:py-4 flex items-center justify-between gap-2">
 
-          <div data-suck className="info-mono">6.9214° N &nbsp;·&nbsp; 122.0790° E</div>
+          <div data-suck className="info-mono text-[9px] sm:text-xs whitespace-nowrap">6.9214° N&nbsp;·&nbsp;122.0790° E</div>
 
-          <div data-suck className="info-mono" style={{ textAlign:"center" }}>
+          <div data-suck className="info-mono hidden md:block text-center">
             Developer &nbsp;·&nbsp; Designer &nbsp;·&nbsp; Builder
           </div>
 
-          <div data-suck className="info-mono">WMSU &nbsp;—&nbsp; Zamboanga City</div>
+          <div data-suck className="info-mono text-[9px] sm:text-xs whitespace-nowrap">WMSU&nbsp;—&nbsp;Zamboanga</div>
         </div>
       </section>
     </>

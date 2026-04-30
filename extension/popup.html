@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Time Stone</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="sanctum">
+      <div class="rune-ring">
+        <div class="rune-ring__inner"></div>
+        <div class="rune-ring__core"></div>
+      </div>
+
+      <h1 class="title">Time Stone</h1>
+      <p class="subtitle">Sentinel of the Sanctum</p>
+
+      <div class="card">
+        <div class="card__label">Last Disturbance</div>
+        <div class="card__value" id="lastUpdated">Reading the timestream…</div>
+        <div class="card__note" id="updateTitle"></div>
+      </div>
+
+      <button id="visitBtn" class="btn">Enter the Sanctum</button>
+      <button id="refreshBtn" class="btn btn--ghost">Consult the Eye</button>
+
+      <p class="footer-note">Polling every 4 hours across the multiverse.</p>
+    </div>
+    <script src="config.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

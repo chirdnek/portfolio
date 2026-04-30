@@ -77,10 +77,9 @@ function MarqueeRow({
 export default function Technical() {
   return (
     <section
-      className="relative w-full overflow-hidden"
+      className="relative w-full overflow-hidden bg-black"
       style={{ minHeight: "50vh" }}
     >
-
       {/* Content */}
       <div className="relative z-30 w-full flex flex-col items-center justify-center px-6 sm:px-10 lg:px-16 py-16 sm:py-20">
         {/* Section label */}
