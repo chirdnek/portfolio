@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 const socials = [
-  { label: "GitHub", href: "https://github.com/yourusername" },
-  { label: "LinkedIn", href: "https://linkedin.com/in/yourusername" },
-  { label: "Twitter", href: "https://twitter.com/yourusername" },
+  { label: "GitHub", href: "https://github.com/chirdnek" },
+  { label: "LinkedIn", href: "https://linkedin.com/in/kendrickserrano" },
+  { label: "Email", href: "mailto:kendrickserrano7@gmail.com" },
 ];
 
 export default function Footer() {
@@ -13,7 +13,7 @@ export default function Footer() {
         <p className="text-white/20 text-sm">
           © {new Date().getFullYear()}{" "}
           <Link href="/" className="text-white/35 hover:text-white transition-colors duration-300">
-            KENTO_O
+            Kendrick Serrano
           </Link>
         </p>
 

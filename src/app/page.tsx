@@ -3,27 +3,11 @@ import RevealOnScroll from "@/components/ui/RevealOnScroll";
 import { BentoGrid, BentoCard } from "@/components/ui/BentoGrid";
 import StickyScrollSection from "@/components/ui/StickyScrollSection";
 import SectionDivider from "@/components/ui/SectionDivider";
-import Marquee from "@/components/ui/Marquee";
 import WordReveal from "@/components/ui/WordReveal";
 import { getFeaturedProjects, projects } from "@/data/projects";
 import Link from "next/link";
 
 const SPANS = ["2x2", "1x1", "1x1", "2x1"] as const;
-
-const TECH_STACK = [
-  "TypeScript",
-  "React",
-  "Next.js",
-  "Node.js",
-  "PostgreSQL",
-  "Tailwind",
-  "Framer Motion",
-  "tRPC",
-  "GraphQL",
-  "Prisma",
-  "Vercel",
-  "Figma",
-];
 
 const PROCESS_ITEMS = [
   {
@@ -60,11 +44,6 @@ export default function Home() {
   return (
     <>
       <Hero />
-
-      {/* Tech stack marquee */}
-      <section className="border-y border-subtle py-2 bg-white/[0.008]">
-        <Marquee items={TECH_STACK} speed={42} />
-      </section>
 
       {/* Selected work */}
       <SectionDivider index="01" total="03" label="Selected work" />
@@ -150,18 +129,19 @@ export default function Home() {
                 <span className="link-underline">Start a conversation</span>
                 <span
                   aria-hidden
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-subtle text-fg-muted transition-all duration-300
-                    group-hover:bg-accent group-hover:text-white group-hover:border-[color:var(--accent)]
+                  className="flex h-9 w-9 items-center justify-center border border-[color:var(--border-strong)] text-fg-muted transition-all duration-300
+                    group-hover:bg-[color:var(--foreground)] group-hover:text-[color:var(--background)] group-hover:border-[color:var(--foreground)]
                     group-hover:translate-x-0.5"
+                  style={{ borderRadius: "2px" }}
                 >
                   →
                 </span>
               </Link>
               <a
-                href="mailto:nexzysintelligence@gmail.com"
+                href="mailto:kendrickserrano7@gmail.com"
                 className="text-fg-muted hover:text-fg text-sm transition-colors"
               >
-                nexzysintelligence@gmail.com
+                kendrickserrano7@gmail.com
               </a>
             </div>
           </RevealOnScroll>

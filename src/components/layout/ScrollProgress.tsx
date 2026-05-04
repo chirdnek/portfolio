@@ -35,8 +35,8 @@ export default function ScrollProgress() {
           key={i}
           className="w-0.5 h-3.5 transition-all duration-75"
           style={{
-            backgroundColor: i < filledSegments ? "rgba(255, 106, 0, 0.95)" : "rgba(255, 255, 255, 0.15)",
-            boxShadow: i < filledSegments ? "0 0 6px rgba(255, 120, 0, 0.65)" : "none",
+            backgroundColor: i < filledSegments ? "rgba(13, 13, 12, 0.92)" : "rgba(13, 13, 12, 0.10)",
+            boxShadow: "none",
           }}
         />
       ))}

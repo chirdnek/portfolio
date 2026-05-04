@@ -1,16 +1,27 @@
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://kento-o.dev";
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://kendrickserrano.dev";
 
 const structuredData = {
   "@context": "https://schema.org",
   "@type": "Person",
-  name: "KENTO_O",
+  name: "Kendrick U. Serrano",
+  alternateName: "Kendrick Serrano",
   url: BASE_URL,
-  jobTitle: "Creative Developer",
-  description: "Creative developer building refined digital experiences.",
+  email: "mailto:kendrickserrano7@gmail.com",
+  jobTitle: "Information Technology Student & Web/App Developer",
+  description:
+    "Information Technology student at Western Mindanao State University. UI/UX designer and full-stack web/app developer building accessible, well-crafted digital experiences.",
+  address: {
+    "@type": "PostalAddress",
+    addressLocality: "Tugbungan, Zamboanga City",
+    addressCountry: "PH",
+  },
+  alumniOf: {
+    "@type": "CollegeOrUniversity",
+    name: "Western Mindanao State University",
+  },
   sameAs: [
-    "https://github.com/yourusername",
-    "https://linkedin.com/in/yourusername",
-    "https://twitter.com/yourusername",
+    "https://github.com/chirdnek",
+    "https://linkedin.com/in/kendrickserrano",
   ],
 };
 

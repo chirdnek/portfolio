@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Space_Grotesk, JetBrains_Mono, Bebas_Neue } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
-import Navbar from "@/components/layout/Navbar";
+import FloatingDock from "@/components/ui/FloatingDock";
 import ScrollProgress from "@/components/layout/ScrollProgress";
 import JsonLd from "@/components/JsonLd";
 import CustomCursor from "@/components/transitions/CustomCursor";
@@ -10,27 +10,52 @@ import ConsoleFilter from "@/components/ConsoleFilter";
 import SmoothScroll from "@/components/providers/SmoothScroll";
 import NoiseOverlay from "@/components/ui/NoiseOverlay";
 
-const geistSans = Geist({
+// Body — Space Grotesk: tight geometric sans, reads like a HUD chyron.
+const spaceGrotesk = Space_Grotesk({
   variable: "--font-sans",
   subsets: ["latin"],
   display: "swap",
+  weight: ["300", "400", "500", "600", "700"],
 });
 
-const geistMono = Geist_Mono({
+// HUD — JetBrains Mono: the terminal/visa-countdown typeface.
+const jetMono = JetBrains_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
   display: "swap",
+  weight: ["400", "500", "600", "700"],
+});
+
+// Display — Bebas Neue: massive condensed numerals and uppercase headlines.
+const bebas = Bebas_Neue({
+  variable: "--font-display",
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400"],
 });
 
 export const metadata: Metadata = {
-  title: "Kendrick Serrano — Creative Developer",
-  description: "Full-stack developer building refined, high-craft web experiences.",
-  keywords: ["developer", "portfolio", "web development", "creative", "react", "typescript"],
-  authors: [{ name: "Kendrick Serrano" }],
+  title: "Kendrick Serrano — UI/UX Designer & Developer",
+  description:
+    "UI/UX designer and web/mobile developer based in Tugbungan, Zamboanga City. Selected work in Figma, Flutter, and React — interfaces designed and shipped end-to-end.",
+  keywords: [
+    "Kendrick Serrano",
+    "UI/UX designer",
+    "portfolio",
+    "design portfolio",
+    "Figma",
+    "Flutter",
+    "React",
+    "Next.js",
+    "Zamboanga",
+    "WMSU",
+  ],
+  authors: [{ name: "Kendrick U. Serrano" }],
   icons: { icon: "/favicon.jpg" },
   openGraph: {
-    title: "Kendrick Serrano — Creative Developer",
-    description: "Full-stack developer building refined, high-craft web experiences.",
+    title: "Kendrick Serrano — UI/UX Designer & Developer",
+    description:
+      "Selected UI/UX design work — interfaces designed in Figma and shipped in Flutter and React.",
     type: "website",
   },
 };
@@ -47,16 +72,16 @@ export default function RootLayout({
       </head>
       <body
         suppressHydrationWarning
-        className={`${geistSans.variable} ${geistMono.variable} font-sans cursor-none bg-bg`}
+        className={`${spaceGrotesk.variable} ${jetMono.variable} ${bebas.variable} font-sans cursor-none bg-bg`}
       >
         <ConsoleFilter />
         <NoiseOverlay />
         <CustomCursor />
         <ScrollProgress />
         <SmoothScroll>
-          <Navbar />
           <main className="min-h-screen">{children}</main>
         </SmoothScroll>
+        <FloatingDock />
         <Analytics />
       </body>
     </html>

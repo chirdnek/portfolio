@@ -3,20 +3,32 @@
 @tailwind utilities;
 
 /* ─────────────────────────────────────────────────────────
-   Linear / Vercel — refined dark
-   Single accent (#4d65ff), near-black base, off-white text
+   ALICE IN BORDERLAND — dystopian death-game UI
+   Void black · neon red (warning) · ice cyan (HUD) · bone
    ───────────────────────────────────────────────────────── */
 :root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
-  --fg-muted: rgba(237, 237, 237, 0.55);
-  --fg-faint: rgba(237, 237, 237, 0.35);
-  --accent: #4d65ff;
-  --accent-hover: #6478ff;
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.16);
-  --muted: #888;
-  --noise-opacity: 0.012;
+  --background: #050507;            /* near-pitch black */
+  --background-elev: #0a0a0e;       /* one step up */
+  --foreground: #e8e8ea;            /* bone white */
+  --fg-muted: rgba(232, 232, 234, 0.62);
+  --fg-faint: rgba(232, 232, 234, 0.36);
+  --accent: #ff003c;                /* visa-warning red */
+  --accent-hover: #ff2856;
+  --hud: #00f0ff;                   /* HUD cyan */
+  --hud-dim: rgba(0, 240, 255, 0.55);
+  --warn: #ffd400;                  /* card-suit yellow / clubs */
+  --border: rgba(232, 232, 234, 0.10);
+  --border-strong: rgba(232, 232, 234, 0.24);
+  --rule: rgba(232, 232, 234, 0.30);
+  --grid-line: rgba(232, 232, 234, 0.06);
+  --muted: #6b6b72;
+  --noise-opacity: 0.045;
+
+  /* Card-suit semantic colors */
+  --suit-spade: var(--foreground);
+  --suit-heart: var(--accent);
+  --suit-diamond: var(--accent);
+  --suit-club: var(--foreground);
 }
 
 @layer base {
@@ -24,14 +36,23 @@
     @apply antialiased;
     background: var(--background);
     color: var(--foreground);
-    font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
     font-weight: 400;
-    letter-spacing: -0.01em;
+    letter-spacing: 0;
+    /* CRT scanlines — the AiB visa screen feel */
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        transparent 0,
+        transparent 2px,
+        rgba(232, 232, 234, 0.018) 2px,
+        rgba(232, 232, 234, 0.018) 3px
+      );
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
     font-weight: 600;
   }
 
@@ -45,7 +66,7 @@
 
   ::selection {
     background: var(--accent);
-    color: #fff;
+    color: #000;
   }
 }
 
@@ -54,33 +75,50 @@
     @apply max-w-6xl mx-auto px-6 sm:px-8 lg:px-10;
   }
 
-  /* Primary CTA — flat, electric */
+  /* Primary CTA — visa-stamp red, hard edges */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-md
-           text-sm font-medium transition-colors duration-200
-           focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2;
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5
+           text-xs font-semibold transition-colors duration-150
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
     background: var(--accent);
-    color: #fff;
-    focus-ring-offset-color: var(--background);
+    color: #000;
+    border-radius: 0;
+    letter-spacing: 0.18em;
+    font-family: var(--font-mono), ui-monospace, monospace;
+    text-transform: uppercase;
+    /* Tight contact glow — just a hairline ring, minimal halo */
+    box-shadow: 0 0 0 1px var(--accent), 0 0 6px -2px var(--accent);
   }
-  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-primary:hover {
+    background: var(--accent-hover);
+    box-shadow: 0 0 0 1px var(--accent-hover), 0 0 10px -2px var(--accent);
+  }
 
-  /* Secondary / ghost */
+  /* Secondary / ghost — HUD cyan outline */
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-md
-           text-sm font-medium transition-colors duration-200;
-    border: 1px solid var(--border-strong);
-    color: var(--foreground);
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5
+           text-xs font-semibold transition-colors duration-150;
+    border: 1px solid var(--hud-dim);
+    color: var(--hud);
+    border-radius: 0;
+    font-family: var(--font-mono), ui-monospace, monospace;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
   }
-  .btn-ghost:hover { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.28); }
+  .btn-ghost:hover {
+    background: rgba(0, 240, 255, 0.06);
+    border-color: var(--hud);
+    color: var(--hud);
+  }
 
-  /* Mono caption — tiny labels */
+  /* Mono caption — HUD label, terminal style */
   .mono-label {
     font-family: var(--font-mono), ui-monospace, monospace;
     font-size: 11px;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.22em;
     color: var(--fg-muted);
     text-transform: uppercase;
+    font-weight: 500;
   }
 
   /* Animated underline link */
@@ -92,7 +130,7 @@
   .link-underline::after {
     content: "";
     @apply absolute bottom-0 left-0 w-full h-px origin-left scale-x-0 transition-transform duration-300;
-    background-color: var(--foreground);
+    background-color: var(--accent);
   }
   .link-underline:hover::after { @apply scale-x-100; }
 
@@ -107,42 +145,161 @@
     color: var(--fg-muted);
   }
 
-  /* Card — subtle border, accent on hover */
+  /* Card — playing-card style with corner suits */
   .card {
-    @apply rounded-xl p-6 transition-all duration-300;
-    border: 1px solid var(--border);
-    background: rgba(255, 255, 255, 0.012);
+    @apply p-6 transition-all duration-300;
+    border: 1px solid var(--border-strong);
+    background: var(--background-elev);
+    border-radius: 2px;
   }
   .card:hover {
-    border-color: rgba(77, 101, 255, 0.45);
-    background: rgba(255, 255, 255, 0.02);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent), 0 0 28px -10px var(--accent);
+  }
+
+  /* AiB flourishes -------------------------------- */
+
+  /* HUD frame — corner brackets */
+  .hud-frame {
+    position: relative;
+  }
+  .hud-frame::before,
+  .hud-frame::after {
+    content: "";
+    position: absolute;
+    width: 14px; height: 14px;
+    border-color: var(--hud);
+    border-style: solid;
+    pointer-events: none;
+  }
+  .hud-frame::before {
+    top: -1px; left: -1px;
+    border-width: 1px 0 0 1px;
+  }
+  .hud-frame::after {
+    bottom: -1px; right: -1px;
+    border-width: 0 1px 1px 0;
+  }
+
+  /* Suit row — replaces fleurons */
+  .suit-rule {
+    @apply flex items-center gap-4 select-none;
+    color: var(--fg-faint);
+    font-family: var(--font-mono), ui-monospace, monospace;
+  }
+  .suit-rule::before,
+  .suit-rule::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+
+  /* Glitch text — RGB chromatic split on hover */
+  .glitch {
+    position: relative;
+    display: inline-block;
+  }
+  .glitch::before,
+  .glitch::after {
+    content: attr(data-text);
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 200ms ease;
+  }
+  .glitch::before {
+    color: var(--accent);
+    transform: translate(2px, 0);
+    mix-blend-mode: screen;
+  }
+  .glitch::after {
+    color: var(--hud);
+    transform: translate(-2px, 0);
+    mix-blend-mode: screen;
+  }
+  .glitch:hover::before,
+  .glitch:hover::after,
+  .glitch.glitch--always::before,
+  .glitch.glitch--always::after {
+    opacity: 1;
+    animation: glitch-jitter 0.45s steps(2) infinite;
+  }
+  @keyframes glitch-jitter {
+    0%, 100% { transform: translate(2px, 0); }
+    25%      { transform: translate(2px, -1px) skewX(2deg); }
+    50%      { transform: translate(-2px, 1px); }
+    75%      { transform: translate(2px, 1px) skewX(-2deg); }
+  }
+  .glitch::after {
+    animation-direction: reverse;
+  }
+
+  /* Scanline overlay (full-screen, sits over content) */
+  .scanlines {
+    pointer-events: none;
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        rgba(0,0,0,0.18) 0,
+        rgba(0,0,0,0.18) 1px,
+        transparent 1px,
+        transparent 3px
+      );
+    mix-blend-mode: multiply;
+  }
+
+  /* CRT vignette */
+  .crt-vignette {
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%);
+  }
+
+  /* AiB image treatment — slight cyan/red split + desaturation */
+  .aib-image {
+    filter: contrast(1.05) saturate(0.92);
+    transition: filter 600ms ease;
+  }
+  .aib-image:hover {
+    filter: contrast(1.12) saturate(1) hue-rotate(-2deg);
+  }
+
+  /* Suit pip — for card corners */
+  .suit-pip {
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", system-ui, sans-serif;
+    line-height: 1;
   }
 }
 
 @layer utilities {
-  .tracking-display { letter-spacing: -0.04em; }
+  .tracking-display { letter-spacing: -0.025em; }
   .text-fg { color: var(--foreground); }
   .text-fg-muted { color: var(--fg-muted); }
   .text-fg-faint { color: var(--fg-faint); }
   .text-accent { color: var(--accent); }
+  .text-hud { color: var(--hud); }
   .border-subtle { border-color: var(--border); }
+  .border-hud { border-color: var(--hud); }
   .bg-bg { background: var(--background); }
+  .bg-elev { background: var(--background-elev); }
 }
 
 /* ─────────────────────────────────────────────────────────
-   View Transitions API — soft fade between routes
+   View Transitions API — sharp wipe, not soft fade
    ───────────────────────────────────────────────────────── */
-@keyframes vt-fade-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+@keyframes vt-clip-in {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0 0 0); }
 }
-@keyframes vt-fade-out {
-  from { opacity: 1; }
-  to   { opacity: 0; }
+@keyframes vt-clip-out {
+  from { clip-path: inset(0 0 0 0); }
+  to   { clip-path: inset(0 0 0 100%); }
 }
 ::view-transition-old(root) {
-  animation: vt-fade-out 200ms ease both;
+  animation: vt-clip-out 220ms cubic-bezier(0.7, 0, 0.84, 0) both;
 }
 ::view-transition-new(root) {
-  animation: vt-fade-in 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: vt-clip-in 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }

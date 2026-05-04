@@ -40,8 +40,10 @@ export default function StickyScrollSection({
               <motion.div
                 style={{
                   opacity: useTransform(scrollYProgress, [0, 0.05, 0.95, 1], [0.3, 1, 1, 0.4]),
+                  background: "rgba(13,13,12,0.025)",
+                  borderRadius: "2px",
                 }}
-                className="aspect-square w-full rounded-2xl border border-subtle bg-white/[0.015] overflow-hidden flex items-center justify-center"
+                className="aspect-square w-full border border-[color:var(--border-strong)] overflow-hidden flex items-center justify-center"
               >
                 {pinned}
               </motion.div>

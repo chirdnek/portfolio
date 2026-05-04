@@ -1,16 +1,39 @@
 import type { Metadata } from "next";
 import ContactForm from "@/components/ContactForm";
+import RevealOnScroll from "@/components/ui/RevealOnScroll";
 
 export const metadata: Metadata = {
-  title: "Contact | KENTO_O",
-  description: "Get in touch — I'm open to new opportunities and collaborations.",
+  title: "Contact — Kendrick Serrano",
+  description:
+    "Open to collaborations, freelance projects, and full-time roles. Send a message — usually replies within a day.",
 };
 
 const socials = [
   {
+    label: "Email",
+    href: "mailto:kendrickserrano7@gmail.com",
+    handle: "kendrickserrano7@gmail.com",
+    icon: (
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <rect width="20" height="16" x="2" y="4" rx="2" />
+        <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+      </svg>
+    ),
+  },
+  {
     label: "GitHub",
-    href: "https://github.com/yourusername",
-    handle: "chirdnek",
+    href: "https://github.com/chirdnek",
+    handle: "@chirdnek",
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
@@ -19,7 +42,7 @@ const socials = [
   },
   {
     label: "LinkedIn",
-    href: "https://linkedin.com/in/yourusername",
+    href: "https://linkedin.com/in/kendrickserrano",
     handle: "kendrickserrano",
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -27,105 +50,80 @@ const socials = [
       </svg>
     ),
   },
-  {
-    label: "Twitter / X",
-    href: "https://twitter.com/yourusername",
-    handle: "@keydsky",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-      </svg>
-    ),
-  },
-  {
-    label: "Email",
-    href: "mailto:you@example.com",
-    handle: "kendrickserrano7@gmail.com",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <rect width="20" height="16" x="2" y="4" rx="2" />
-        <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-      </svg>
-    ),
-  },
 ];
 
 export default function ContactPage() {
   return (
-    <div className="pt-32 pb-32">
-      <div className="container-custom">
-        <div className="max-w-2xl">
+    <>
+      <section className="pt-32 pb-12">
+        <div className="container-custom">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20">
+            {/* Left: copy */}
+            <div className="lg:col-span-5 lg:sticky lg:top-32 lg:self-start">
+              <RevealOnScroll blur={false}>
+                <div className="mb-6 flex items-center gap-2">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60 animate-ping" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  </span>
+                  <span className="mono-label">Replying within a day</span>
+                </div>
+              </RevealOnScroll>
 
-          {/* ── Eyebrow ── */}
-          <p
-            className="text-xs font-mono uppercase tracking-[0.2em] mb-5"
-            style={{ color: "var(--accent, #ff6a00)" }}
-            data-reveal-blur
-          >
-            Let's work together
-          </p>
-
-          {/* ── Heading ── */}
-          <h1
-            className="font-black text-white leading-[0.95] mb-6 tracking-tight"
-            style={{ fontSize: "clamp(2.5rem, 8vw, 5rem)" }}
-            data-reveal-heading
-          >
-            Get In Touch
-          </h1>
-
-          {/* ── Sub-copy ── */}
-          <p
-            className="text-lg mb-16 max-w-xl leading-relaxed"
-            data-reveal-blur
-            style={{ color: "var(--fg-muted)" }}
-          >
-            Currently open to new opportunities. Whether you have a project in mind,
-            a question, or just want to say hi — my inbox is always open.
-          </p>
-
-          {/* ── Contact Form ── */}
-          <ContactForm />
-
-          {/* ── Divider ── */}
-          <div
-            className="my-12 h-px w-full"
-            style={{ background: "rgba(255,255,255,0.06)" }}
-            data-reveal
-          />
-
-          {/* ── Social links ── */}
-          <div data-reveal>
-            <h2 className="text-xs font-medium uppercase tracking-widest mb-6" style={{ color: "rgba(255,255,255,0.25)" }}>
-              Find me elsewhere
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" data-reveal-stagger>
-              {socials.map((s) => (
-                <a
-                  key={s.label}
-                  href={s.href}
-                  target={s.label !== "Email" ? "_blank" : undefined}
-                  rel={s.label !== "Email" ? "noopener noreferrer" : undefined}
-                  className="card flex items-center justify-between gap-4 group"
+              <RevealOnScroll>
+                <h1
+                  className="font-semibold tracking-display leading-[0.95] text-fg mb-8"
+                  style={{ fontSize: "clamp(2.5rem, 8vw, 5.5rem)" }}
                 >
-                  <span className="flex items-center gap-3" style={{ color: "rgba(255,255,255,0.35)" }}>
-                    <span className="transition-colors duration-300 group-hover:text-white">
-                      {s.icon}
-                    </span>
-                    <span className="text-sm transition-colors duration-300 group-hover:text-white">
-                      {s.label}
-                    </span>
-                  </span>
-                  <span className="text-xs font-mono truncate" style={{ color: "var(--accent, #ff6a00)" }}>
-                    {s.handle}
-                  </span>
-                </a>
-              ))}
+                  Let&apos;s talk<span className="text-accent">.</span>
+                </h1>
+              </RevealOnScroll>
+
+              <RevealOnScroll delay={0.1}>
+                <p className="text-base sm:text-lg text-fg-muted leading-relaxed mb-12 max-w-md">
+                  I&apos;m open to internships, freelance UI/UX and web/app
+                  projects, and the occasional late-night collaboration.
+                  Tell me what you&apos;re building.
+                </p>
+              </RevealOnScroll>
+
+              <RevealOnScroll delay={0.2} blur={false}>
+                <div className="space-y-1">
+                  <div className="mono-label mb-3">Or reach me at —</div>
+                  {socials.map((s) => (
+                    <a
+                      key={s.label}
+                      href={s.href}
+                      target={s.label !== "Email" ? "_blank" : undefined}
+                      rel={s.label !== "Email" ? "noopener noreferrer" : undefined}
+                      className="group flex items-center justify-between gap-4 py-3 border-b border-subtle hover:border-strong transition-colors"
+                    >
+                      <span className="flex items-center gap-3 text-fg-muted group-hover:text-fg transition-colors duration-200">
+                        <span className="text-fg-muted group-hover:text-accent transition-colors duration-200">
+                          {s.icon}
+                        </span>
+                        <span className="text-sm">{s.label}</span>
+                      </span>
+                      <span className="text-xs font-mono text-fg-faint group-hover:text-fg-muted transition-colors duration-200 truncate">
+                        {s.handle}
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              </RevealOnScroll>
+            </div>
+
+            {/* Right: form */}
+            <div className="lg:col-span-7">
+              <RevealOnScroll blur={false}>
+                <ContactForm />
+              </RevealOnScroll>
             </div>
           </div>
-
         </div>
-      </div>
-    </div>
+      </section>
+
+      <section className="py-32" />
+    </>
   );
 }

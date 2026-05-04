@@ -1,35 +1,127 @@
 import type { Metadata } from "next";
-import ProjectCard from "@/components/ProjectCard";
+import Link from "next/link";
 import { projects } from "@/data/projects";
+import { BentoGrid, BentoCard, type BentoSpan } from "@/components/ui/BentoGrid";
+import RevealOnScroll from "@/components/ui/RevealOnScroll";
+import SectionDivider from "@/components/ui/SectionDivider";
 
 export const metadata: Metadata = {
-  title: "Projects | KENTO_O",
-  description: "A full list of projects I've built.",
+  title: "Work — Kendrick Serrano",
+  description:
+    "Selected UI/UX design work — mobile apps, design systems, and accessible web experiences designed in Figma and shipped in Flutter and React.",
 };
 
-export default function ProjectsPage() {
-  return (
-    <div className="pt-32 pb-32">
-      <div className="container-custom">
-        <div className="mb-16">
-          <h1
-            className="font-black text-white leading-[0.95] mb-4 tracking-tight"
-            style={{ fontSize: "clamp(2.5rem, 8vw, 5rem)" }}
-            data-reveal-heading
-          >
-            Projects
-          </h1>
-          <p className="section-subtitle" data-reveal-blur>
-            Things I&apos;ve built — from side projects to production systems.
-          </p>
-        </div>
+const SPANS: BentoSpan[] = ["2x2", "1x1", "1x1", "2x1"];
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-reveal-stagger>
-          {projects.map((project) => (
-            <ProjectCard key={project.slug} {...project} />
-          ))}
+export default function ProjectsPage() {
+  // All unique tags across projects, sorted by frequency
+  const tagCounts = new Map<string, number>();
+  for (const p of projects) {
+    for (const t of p.tags) tagCounts.set(t, (tagCounts.get(t) || 0) + 1);
+  }
+  const allTags = [...tagCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([t]) => t);
+
+  return (
+    <>
+      <section className="pt-32 pb-12">
+        <div className="container-custom">
+          <RevealOnScroll blur={false}>
+            <div className="mono-label mb-4">Selected work — 2024 / 2026</div>
+          </RevealOnScroll>
+
+          <RevealOnScroll>
+            <h1
+              className="font-semibold tracking-display leading-[0.95] text-fg max-w-4xl mb-8"
+              style={{ fontSize: "clamp(2.5rem, 9vw, 6.5rem)" }}
+            >
+              Things I&apos;ve shipped<span className="text-accent">.</span>
+            </h1>
+          </RevealOnScroll>
+
+          <RevealOnScroll delay={0.1}>
+            <p className="max-w-2xl text-base sm:text-lg text-fg-muted leading-relaxed">
+              A selection of {projects.length} projects across UI/UX, mobile,
+              and design systems. Each one was designed end-to-end — research,
+              wireframes, visual system, and accessibility-first build.
+            </p>
+          </RevealOnScroll>
+
+          {/* Tools chips */}
+          <RevealOnScroll delay={0.2} blur={false}>
+            <div className="mt-10 flex flex-wrap items-center gap-2">
+              <span className="mono-label mr-2">Tools —</span>
+              {allTags.map((tag) => (
+                <span
+                  key={tag}
+                  className="text-xs px-3 py-1.5 border border-subtle rounded-full text-fg-muted hover:text-fg hover:border-strong transition-colors duration-200"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </RevealOnScroll>
         </div>
-      </div>
-    </div>
+      </section>
+
+      <SectionDivider index="01" total="01" label="All projects" />
+
+      <section className="pt-8 pb-32 sm:pb-48">
+        <div className="container-custom">
+          {projects.length === 0 ? (
+            <div className="border border-subtle rounded-2xl py-24 text-center">
+              <div className="mono-label mb-3">Coming soon</div>
+              <p className="text-fg-muted">New work is in the studio.</p>
+            </div>
+          ) : (
+            <RevealOnScroll blur={false}>
+              <BentoGrid>
+                {projects.map((p, i) => (
+                  <BentoCard
+                    key={p.slug}
+                    span={SPANS[i] ?? "1x1"}
+                    href={`/projects/${p.slug}`}
+                    eyebrow={p.role ?? (p.featured ? "Featured" : "Project")}
+                    title={p.title}
+                    description={p.description}
+                    tags={p.tags}
+                    image={p.image}
+                    index={i}
+                  />
+                ))}
+              </BentoGrid>
+            </RevealOnScroll>
+          )}
+        </div>
+      </section>
+
+      {/* Footer CTA */}
+      <section className="border-t border-subtle py-24 sm:py-32">
+        <div className="container-custom max-w-3xl text-center">
+          <RevealOnScroll>
+            <div className="mono-label mb-6">More work in progress</div>
+            <h2
+              className="font-semibold tracking-display text-fg mb-8 leading-[1.05]"
+              style={{ fontSize: "clamp(1.75rem, 5vw, 3.25rem)" }}
+            >
+              Have a project that needs the same care?
+            </h2>
+            <Link
+              href="/contact"
+              className="group inline-flex items-center gap-3 text-base sm:text-lg text-fg"
+            >
+              <span className="link-underline">Let&apos;s build it together</span>
+              <span
+                aria-hidden
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-subtle text-fg-muted transition-all duration-300 group-hover:bg-accent group-hover:text-white group-hover:border-[color:var(--accent)] group-hover:translate-x-0.5"
+              >
+                →
+              </span>
+            </Link>
+          </RevealOnScroll>
+        </div>
+      </section>
+    </>
   );
 }

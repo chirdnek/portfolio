@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 
 interface MarqueeProps {
   items: string[];
@@ -15,6 +16,7 @@ export default function Marquee({
   className = "",
   separator = "✦",
 }: MarqueeProps) {
+  const reduced = usePrefersReducedMotion();
   // Duplicate the list so the loop is seamless.
   const doubled = [...items, ...items];
 
@@ -30,7 +32,7 @@ export default function Marquee({
     >
       <motion.div
         className="flex gap-12 whitespace-nowrap py-6"
-        animate={{ x: ["0%", "-50%"] }}
+        animate={reduced ? undefined : { x: ["0%", "-50%"] }}
         transition={{ duration: speed, repeat: Infinity, ease: "linear" }}
       >
         {doubled.map((item, i) => (

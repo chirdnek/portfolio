@@ -21,7 +21,8 @@ export default function Bottom() {
           className="section-subtitle text-base sm:text-lg leading-relaxed max-w-3xl mx-auto mb-16"
           data-reveal-blur
         >
-          Have a project in mind? I&apos;d love to hear from you. Let&apos;s create something extraordinary together.
+          Have a project in mind, an internship to fill, or a UI worth
+          rebuilding? Tell me what you&apos;re working on.
         </p>
 
         {/* CTA Button */}
@@ -45,11 +46,11 @@ export default function Bottom() {
           data-reveal
           style={{ fontFamily: "'SF Mono', -apple-system, BlinkMacSystemFont, monospace" }}
         >
-          Available for freelance projects and full-time opportunities
+          Open to internships, freelance UI/UX, and web/app projects
         </p>
       </div>
 
-      {/* Big KENTO_O — flush to the bottom edge */}
+      {/* Big KENDRICK wordmark — flush to the bottom edge */}
       <div className="relative z-10 mt-16 sm:mt-20 select-none pointer-events-none overflow-hidden">
         <p
           className="text-[22vw] font-black text-center text-white/[0.06] whitespace-nowrap translate-y-[30%]"
@@ -59,7 +60,7 @@ export default function Bottom() {
             lineHeight: "0.75",
           }}
         >
-          KENTO_O
+          KENDRICK
         </p>
       </div>
     </section>

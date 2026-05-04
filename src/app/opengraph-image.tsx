@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "KENTO_O — Creative Developer";
+export const alt = "Kendrick Serrano — Web & Mobile Developer";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -29,16 +29,16 @@ export default async function Image() {
             letterSpacing: "-0.02em",
           }}
         >
-          KENTO_O
+          Kendrick Serrano
         </div>
         <div
           style={{
             fontSize: "32px",
-            color: "rgba(255,255,255,0.35)",
+            color: "rgba(255,255,255,0.55)",
             marginTop: "24px",
           }}
         >
-          Creative Developer
+          UI/UX · Web &amp; Mobile · Tugbungan, Zamboanga City
         </div>
         <div
           style={{
@@ -47,7 +47,7 @@ export default async function Image() {
             left: "80px",
             width: "48px",
             height: "4px",
-            background: "#ff6a00",
+            background: "#4d65ff",
           }}
         />
       </div>
