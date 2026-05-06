@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { createElement, useEffect, useRef, useState } from "react";
 
 const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!?+*<>/\\";
 
@@ -17,7 +17,7 @@ export default function ScrambleText({
   duration = 1100,
   delay = 0,
   className = "",
-  as: Tag = "span",
+  as = "span",
 }: ScrambleTextProps) {
   const [display, setDisplay] = useState(text);
   const startedRef = useRef(false);
@@ -65,5 +65,7 @@ export default function ScrambleText({
     return () => cancelAnimationFrame(raf);
   }, [text, duration, delay]);
 
-  return <Tag className={className}>{display}</Tag>;
+  // createElement sidesteps the strict JSX child-type narrowing that
+  // happens when a polymorphic tag is typed as `keyof JSX.IntrinsicElements`.
+  return createElement(as, { className }, display);
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { createElement } from "react";
 import { motion, type Variants } from "framer-motion";
 
 interface WordRevealProps {
@@ -30,10 +31,23 @@ export default function WordReveal({
   text,
   className = "",
   staggerDelay = 0.06,
-  as: Tag = "h2",
+  as = "h2",
   style,
 }: WordRevealProps) {
   const words = text.split(" ");
+
+  // Use createElement for the polymorphic outer tag so TypeScript doesn't
+  // narrow its children prop to `never` under strict React 19 types.
+  const innerSpans = words.map((word, i) => (
+    <span
+      key={i}
+      className="inline-block overflow-hidden align-bottom mr-[0.25em]"
+    >
+      <motion.span variants={wordVariants} className="inline-block">
+        {word}
+      </motion.span>
+    </span>
+  ));
 
   return (
     <motion.div
@@ -45,18 +59,7 @@ export default function WordReveal({
       className={className}
       style={style}
     >
-      <Tag className="m-0">
-        {words.map((word, i) => (
-          <span
-            key={i}
-            className="inline-block overflow-hidden align-bottom mr-[0.25em]"
-          >
-            <motion.span variants={wordVariants} className="inline-block">
-              {word}
-            </motion.span>
-          </span>
-        ))}
-      </Tag>
+      {createElement(as, { className: "m-0" }, innerSpans)}
     </motion.div>
   );
 }
