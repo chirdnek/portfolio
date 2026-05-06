@@ -5,10 +5,9 @@ import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import MagneticButton from "@/components/ui/MagneticButton";
 import RotatingWord from "@/components/ui/RotatingWord";
-import CursorSpotlight from "@/components/ui/CursorSpotlight";
 import LocalTime from "@/components/ui/LocalTime";
 import LogoMarquee from "@/components/ui/LogoMarquee";
-import HeroCardHand from "@/components/ui/HeroCardHand";
+import HeroCubeGrid from "@/components/ui/HeroCubeGrid";
 
 const ROTATING = ["interfaces", "mobile apps", "design systems", "experiences"];
 
@@ -57,8 +56,8 @@ export default function Hero() {
         }}
       />
 
-      {/* Cursor wash — accent red, low opacity */}
-      <CursorSpotlight size={520} color="rgba(255, 0, 60, 0.10)" />
+      {/* 3D interactive cube grid — keyboard-style background that pops up under the cursor */}
+      <HeroCubeGrid />
 
       {/* CRT scanlines & vignette over everything */}
       <div className="scanlines pointer-events-none absolute inset-0 z-[3]" aria-hidden />
@@ -103,173 +102,78 @@ export default function Hero() {
           <span className="text-base">♠ ♥ ♦ ♣</span>
         </motion.div>
 
-        {/* Headline + side card */}
-        <div className="grid grid-cols-12 gap-x-6 gap-y-10 items-start flex-1">
-          {/* Headline column */}
-          <div className="col-span-12 lg:col-span-8">
-            <h1
-              className="font-display text-fg block uppercase leading-[0.86] tracking-[-0.01em]"
-              style={{ fontSize: "clamp(3rem, 11.5vw, 9.5rem)" }}
+        {/* Centered headline stack — fills the remaining vertical space */}
+        <div className="flex-1 flex flex-col items-center justify-center text-center">
+          <h1
+            className="font-display text-fg block uppercase leading-[0.86] tracking-[-0.01em]"
+            style={{ fontSize: "clamp(4rem, 16vw, 14rem)" }}
+          >
+            <motion.span
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.45, ease: [0.16, 1, 0.3, 1] }}
+              className="block glitch glitch--always"
+              data-text="DESIGN OR DIE"
             >
-              <motion.span
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, delay: 0.45, ease: [0.16, 1, 0.3, 1] }}
-                className="block glitch glitch--always"
-                data-text="DESIGN OR DIE"
-              >
-                DESIGN OR DIE
-              </motion.span>
-              <motion.span
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, delay: 0.65, ease: [0.16, 1, 0.3, 1] }}
-                aria-hidden
-                className="block"
-              >
-                <span style={{ color: "var(--hud)" }}>build </span>
-                <RotatingWord words={[...ROTATING]} />
-              </motion.span>
-            </h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
+              DESIGN OR DIE
+            </motion.span>
+            <motion.span
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.65, ease: [0.16, 1, 0.3, 1] }}
+              aria-hidden
+              className="block"
+              style={{ color: "var(--hud)" }}
+            >
+              BUILD
+            </motion.span>
+            <motion.span
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.85, ease: [0.16, 1, 0.3, 1] }}
-              className="mt-10 max-w-2xl text-base sm:text-lg text-fg-muted leading-relaxed"
+              aria-hidden
+              className="block"
             >
-              I&apos;m Kendrick — a UI/UX designer and web/mobile
-              developer based in Tugbungan, Zamboanga City. I design in
-              Figma and ship in Flutter and React. Every project is a
-              game with rules; the win condition is craft.
-            </motion.p>
+              <RotatingWord words={[...ROTATING]} />
+            </motion.span>
+          </h1>
 
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 1.05, ease: [0.16, 1, 0.3, 1] }}
-              className="mt-10 flex flex-wrap items-center gap-x-5 gap-y-3"
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 1.05, ease: [0.16, 1, 0.3, 1] }}
+            className="mt-10 max-w-2xl text-base sm:text-lg text-fg-muted leading-relaxed"
+          >
+            I&apos;m Kendrick — a UI/UX designer and web/mobile
+            developer based in Tugbungan, Zamboanga City. I design in
+            Figma and ship in Flutter and React. Every project is a
+            game with rules; the win condition is craft.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 1.25, ease: [0.16, 1, 0.3, 1] }}
+            className="mt-10 flex flex-wrap items-center justify-center gap-x-5 gap-y-3"
+          >
+            <Link href="/projects">
+              <MagneticButton className="btn-primary" type="button">
+                Enter the arena
+                <span aria-hidden>→</span>
+              </MagneticButton>
+            </Link>
+            <Link href="/contact" className="btn-ghost">
+              Make contact
+            </Link>
+            <span aria-hidden className="hidden sm:inline-block h-px w-6 bg-[color:var(--rule)]" />
+            <a
+              href="/CV/CV.pdf"
+              download="Kendrick-Serrano-CV.pdf"
+              className="mono-label text-fg-muted hover:text-fg transition-colors"
             >
-              <Link href="/projects">
-                <MagneticButton className="btn-primary" type="button">
-                  Enter the arena
-                  <span aria-hidden>→</span>
-                </MagneticButton>
-              </Link>
-              <Link href="/contact" className="btn-ghost">
-                Make contact
-              </Link>
-              <span aria-hidden className="hidden sm:inline-block h-px w-6 bg-[color:var(--rule)]" />
-              <a
-                href="/CV/CV.pdf"
-                download="Kendrick-Serrano-CV.pdf"
-                className="mono-label text-fg-muted hover:text-fg transition-colors"
-              >
-                Download CV ↓
-              </a>
-            </motion.div>
-          </div>
-
-          {/* Right column: glass player panel only */}
-          <div className="col-span-12 lg:col-span-4">
-            <motion.aside
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.9, delay: 0.45, ease: [0.16, 1, 0.3, 1] }}
-              className="player-card relative overflow-hidden p-6"
-            >
-            {/* HUD corner accents (cyan) */}
-            <span aria-hidden className="player-card__corner player-card__corner--tl" />
-            <span aria-hidden className="player-card__corner player-card__corner--br" />
-
-            <div className="relative z-[1]">
-              <div className="flex items-center justify-between">
-                <span className="mono-label text-[color:var(--hud)]">Player Card</span>
-                <span aria-hidden className="suit-pip text-[color:var(--accent)] text-lg">♥</span>
-              </div>
-
-              <div className="my-5 h-px w-full bg-gradient-to-r from-transparent via-white/25 to-transparent" />
-
-              <div className="space-y-4">
-                <Row label="Designing" value="FishFresh (capstone)" />
-                <Row label="Studying" value="BS IT, WMSU" />
-                <Row label="Tools" value="Figma · Flutter · Code" />
-                <Row label="Status" value="Available" highlight />
-              </div>
-
-              <div className="my-5 h-px w-full bg-gradient-to-r from-transparent via-white/25 to-transparent" />
-
-              <a
-                href="mailto:kendrickserrano7@gmail.com"
-                className="group flex items-center justify-between text-sm text-fg-muted transition-colors hover:text-fg"
-              >
-                <span className="font-mono text-xs">kendrickserrano7@gmail.com</span>
-                <span
-                  aria-hidden
-                  className="flex h-7 w-7 items-center justify-center border text-xs transition-all group-hover:bg-[color:var(--accent)] group-hover:text-black group-hover:border-[color:var(--accent)] group-hover:-translate-y-0.5 group-hover:translate-x-0.5 backdrop-blur-sm"
-                  style={{ borderColor: "rgba(255,255,255,0.30)", borderRadius: "2px" }}
-                >
-                  ↗
-                </span>
-              </a>
-            </div>
-
-            <style jsx>{`
-              .player-card {
-                /* Solid-feeling frosted slab — opaque enough that
-                   the cursor wash behind it can't visibly shift. */
-                background:
-                  linear-gradient(
-                    135deg,
-                    rgba(20, 20, 24, 0.78) 0%,
-                    rgba(10, 10, 14, 0.86) 100%
-                  );
-                border-radius: 4px;
-                border: 1px solid rgba(255, 255, 255, 0.16);
-                backdrop-filter: blur(28px) saturate(120%);
-                -webkit-backdrop-filter: blur(28px) saturate(120%);
-                box-shadow:
-                  inset 0 1px 0 rgba(255, 255, 255, 0.18),
-                  inset 0 -1px 0 rgba(255, 255, 255, 0.04),
-                  0 24px 60px -24px rgba(0, 0, 0, 0.85),
-                  0 0 0 1px rgba(0, 240, 255, 0.08);
-                isolation: isolate;
-                will-change: auto;
-                transform: translateZ(0);
-              }
-              /* Glass top sheen — fixed, doesn't react to mouse */
-              .player-card::before {
-                content: "";
-                position: absolute;
-                inset: 0;
-                pointer-events: none;
-                background: linear-gradient(
-                  180deg,
-                  rgba(255, 255, 255, 0.08) 0%,
-                  rgba(255, 255, 255, 0) 32%
-                );
-                z-index: 0;
-              }
-              .player-card__corner {
-                position: absolute;
-                width: 14px;
-                height: 14px;
-                border: 1px solid var(--hud);
-                opacity: 0.75;
-                pointer-events: none;
-                z-index: 2;
-              }
-              .player-card__corner--tl {
-                top: -1px; left: -1px;
-                border-width: 1px 0 0 1px;
-              }
-              .player-card__corner--br {
-                bottom: -1px; right: -1px;
-                border-width: 0 1px 1px 0;
-              }
-            `}</style>
-            </motion.aside>
-          </div>
+              Download CV ↓
+            </a>
+          </motion.div>
         </div>
 
         {/* Bottom: marquee inside hairlines */}
@@ -280,19 +184,6 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Decorative random-card hand — bottom-right of hero, above the marquee */}
-      <HeroCardHand />
     </section>
-  );
-}
-
-function Row({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="mono-label text-fg-faint">{label}</span>
-      <span className={`text-sm font-mono ${highlight ? "text-[color:var(--accent)]" : "text-fg"}`}>
-        {value}
-      </span>
-    </div>
   );
 }

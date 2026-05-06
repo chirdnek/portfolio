@@ -40,7 +40,7 @@ export default function FloatingDock() {
         <Link
           href="/contact"
           className="ml-1 inline-flex items-center gap-2 px-4 py-2 text-xs font-mono tracking-[0.18em] uppercase transition-colors"
-          style={{ background: "var(--accent)", color: "#000", borderRadius: "2px" }}
+          style={{ background: "#71717a", color: "var(--foreground)", borderRadius: "2px" }}
         >
           <span>Get in touch</span>
           <span aria-hidden>→</span>

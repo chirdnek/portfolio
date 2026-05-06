@@ -39,6 +39,7 @@ const POSITIONS = [
 
 export default function HeroCardHand() {
   const [cards, setCards] = useState<DeckCard[] | null>(null);
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,6 +99,8 @@ export default function HeroCardHand() {
               ease: [0.16, 1, 0.3, 1],
             }}
             whileHover={{ y: -6, rotate: p.rotate, scale: 1.04 }}
+            onMouseEnter={() => setHoverIdx(i)}
+            onMouseLeave={() => setHoverIdx((cur) => (cur === i ? null : cur))}
             className="absolute pointer-events-auto"
             style={{
               right: `${p.x * -1}px`,
@@ -106,7 +109,7 @@ export default function HeroCardHand() {
               transformOrigin: "bottom center",
               zIndex: 10 + i,
               filter:
-                "drop-shadow(0 14px 26px rgba(0,0,0,0.7)) drop-shadow(0 0 22px rgba(255,0,60,0.18))",
+                "drop-shadow(0 14px 26px rgba(0,0,0,0.7)) drop-shadow(0 0 22px rgba(232,80,112,0.18))",
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -120,7 +123,8 @@ export default function HeroCardHand() {
               className="w-full h-auto select-none rounded-md"
               style={{
                 opacity: isLoading ? 0.85 : 1,
-                transition: "opacity 350ms ease",
+                filter: hoverIdx === i ? "invert(1)" : "none",
+                transition: "opacity 350ms ease, filter 300ms ease",
               }}
             />
           </motion.div>

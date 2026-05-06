@@ -104,11 +104,11 @@ export default function PlayingCard({
             backfaceVisibility: "hidden",
             WebkitBackfaceVisibility: "hidden",
             transform: "rotateY(180deg)",
-            border: "2px solid #ff003c",
+            border: "2px solid #e85070",
             borderRadius: "6px",
             background: "linear-gradient(160deg, #2c2c38 0%, #161620 100%)",
             boxShadow:
-              "inset 0 1px 0 rgba(255,255,255,0.18), 0 0 0 1px rgba(0,0,0,0.4), 0 18px 32px -10px rgba(0,0,0,0.9), 0 0 36px -6px rgba(255,0,60,0.45)",
+              "inset 0 1px 0 rgba(255,255,255,0.18), 0 0 0 1px rgba(0,0,0,0.4), 0 18px 32px -10px rgba(0,0,0,0.9), 0 0 36px -6px rgba(232,80,112,0.45)",
           }}
         >
           {/* Holo shimmer on the front when revealed */}
@@ -117,7 +117,7 @@ export default function PlayingCard({
             className="pointer-events-none absolute inset-0 mix-blend-screen"
             style={{
               background:
-                "linear-gradient(135deg, rgba(255,0,60,0.14) 0%, rgba(0,240,255,0.14) 35%, rgba(255,212,0,0.12) 60%, rgba(255,0,60,0.14) 100%)",
+                "linear-gradient(135deg, rgba(232,80,112,0.14) 0%, rgba(0,240,255,0.14) 35%, rgba(255,212,0,0.12) 60%, rgba(232,80,112,0.14) 100%)",
               backgroundSize: "220% 220%",
               backgroundPosition: "100% 0",
               animation: "card-foil 3.4s ease-in-out infinite",
@@ -236,7 +236,7 @@ function CardBack({ suit, compact }: { suit: Suit; compact: boolean }) {
       <span
         aria-hidden
         className="absolute inset-1.5 border"
-        style={{ borderColor: "rgba(255,0,60,0.75)", borderRadius: "2px" }}
+        style={{ borderColor: "rgba(232,80,112,0.75)", borderRadius: "2px" }}
       />
 
       {/* Crosshair guides */}
@@ -267,7 +267,7 @@ function CardBack({ suit, compact }: { suit: Suit; compact: boolean }) {
             background: "#0a0a0e",
             border: "1.5px solid var(--hud)",
             borderRadius: "999px",
-            boxShadow: "0 0 0 4px #0a0a0e, 0 0 24px -2px rgba(255,0,60,0.55)",
+            boxShadow: "0 0 0 4px #0a0a0e, 0 0 24px -2px rgba(232,80,112,0.55)",
           }}
         >
           {suit}

@@ -1,4 +1,6 @@
 import Hero from "@/components/sections/Hero";
+import Robot3D from "@/components/sections/Robot3D";
+import SpeechBubble from "@/components/ui/SpeechBubble";
 import RevealOnScroll from "@/components/ui/RevealOnScroll";
 import { BentoGrid, BentoCard } from "@/components/ui/BentoGrid";
 import StickyScrollSection from "@/components/ui/StickyScrollSection";
@@ -108,43 +110,62 @@ export default function Home() {
       {/* Footer CTA */}
       <SectionDivider index="03" total="03" label="Let's talk" />
       <section className="pt-12 pb-32 sm:pb-48">
-        <div className="container-custom max-w-4xl">
-          <RevealOnScroll blur={false}>
-            <div className="mono-label mb-6">Have a project in mind?</div>
-          </RevealOnScroll>
+        <div className="container-custom">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+            {/* Text column */}
+            <div className="lg:col-span-7">
+              <RevealOnScroll blur={false}>
+                <div className="mono-label mb-6">Have a project in mind?</div>
+              </RevealOnScroll>
 
-          <WordReveal
-            text="Let's build something quietly remarkable."
-            as="h2"
-            className="font-semibold tracking-display leading-[0.95] text-fg mb-12"
-            style={{ fontSize: "clamp(2.5rem, 9vw, 6rem)" }}
-          />
+              <WordReveal
+                text="Let's build something quietly remarkable."
+                as="h2"
+                className="font-semibold tracking-display leading-[0.95] text-fg mb-12"
+                style={{ fontSize: "clamp(2.5rem, 9vw, 6rem)" }}
+              />
 
-          <RevealOnScroll delay={0.4} blur={false}>
-            <div className="flex flex-wrap items-center gap-x-10 gap-y-4">
-              <Link
-                href="/contact"
-                className="group inline-flex items-center gap-3 text-base sm:text-lg text-fg"
-              >
-                <span className="link-underline">Start a conversation</span>
-                <span
-                  aria-hidden
-                  className="flex h-9 w-9 items-center justify-center border border-[color:var(--border-strong)] text-fg-muted transition-all duration-300
-                    group-hover:bg-[color:var(--foreground)] group-hover:text-[color:var(--background)] group-hover:border-[color:var(--foreground)]
-                    group-hover:translate-x-0.5"
-                  style={{ borderRadius: "2px" }}
-                >
-                  →
-                </span>
-              </Link>
-              <a
-                href="mailto:kendrickserrano7@gmail.com"
-                className="text-fg-muted hover:text-fg text-sm transition-colors"
-              >
-                kendrickserrano7@gmail.com
-              </a>
+              <RevealOnScroll delay={0.4} blur={false}>
+                <div className="flex flex-wrap items-center gap-x-10 gap-y-4">
+                  <Link
+                    href="/contact"
+                    className="group inline-flex items-center gap-3 text-base sm:text-lg text-fg"
+                  >
+                    <span className="link-underline">Start a conversation</span>
+                    <span
+                      aria-hidden
+                      className="flex h-9 w-9 items-center justify-center border border-[color:var(--border-strong)] text-fg-muted transition-all duration-300
+                        group-hover:bg-[color:var(--foreground)] group-hover:text-[color:var(--background)] group-hover:border-[color:var(--foreground)]
+                        group-hover:translate-x-0.5"
+                      style={{ borderRadius: "2px" }}
+                    >
+                      →
+                    </span>
+                  </Link>
+                  <a
+                    href="mailto:kendrickserrano7@gmail.com"
+                    className="text-fg-muted hover:text-fg text-sm transition-colors"
+                  >
+                    kendrickserrano7@gmail.com
+                  </a>
+                </div>
+              </RevealOnScroll>
             </div>
-          </RevealOnScroll>
+
+            {/* Robot column — bigger canvas + speech bubble overlay */}
+            <div className="lg:col-span-5">
+              <div
+                className="relative w-full"
+                style={{ height: "min(82vh, 760px)" }}
+              >
+                {/* Speech bubble — sits above the robot's head */}
+                <div className="absolute top-4 left-2 sm:left-6 z-10 max-w-[18rem] pointer-events-none">
+                  <SpeechBubble />
+                </div>
+                <Robot3D />
+              </div>
+            </div>
+          </div>
         </div>
       </section>
     </>
