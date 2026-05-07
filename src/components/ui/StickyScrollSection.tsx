@@ -72,7 +72,7 @@ function Step({ item, index }: { item: Item; index: number }) {
   const y = useTransform(scrollYProgress, [0, 1], [24, 0]);
 
   return (
-    <motion.div ref={ref} style={{ opacity, y }} className="space-y-3">
+    <motion.div ref={ref} style={{ opacity, y }} className="relative space-y-3">
       <div className="mono-label">
         {String(index + 1).padStart(2, "0")}
         {item.eyebrow ? ` — ${item.eyebrow}` : ""}

@@ -6,16 +6,16 @@ import { usePathname } from "next/navigation";
 export default function ScrollProgress() {
   const pathname = usePathname();
   const [progress, setProgress] = useState(0);
-  const segments = 180; // Number of vertical stick lines
 
   useEffect(() => {
     const handleScroll = () => {
       const windowHeight = document.documentElement.scrollHeight - window.innerHeight;
       const scrolled = window.scrollY;
-      const scrollProgress = windowHeight > 0 ? (scrolled / windowHeight) * 100 : 0;
+      const scrollProgress = windowHeight > 0 ? scrolled / windowHeight : 0;
       setProgress(scrollProgress);
     };
 
+    handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -23,23 +23,26 @@ export default function ScrollProgress() {
   // Hide on the /world route — that page lands fullscreen after the portal transit.
   if (pathname?.startsWith("/world")) return null;
 
-  const filledSegments = Math.ceil((progress / 100) * segments);
-
   return (
     <div
       data-suck
-      className="fixed top-2 left-0 right-0 h-4 z-[9998] flex items-center justify-self-center gap-1 px-1 py-1"
+      className="fixed top-2 left-2 right-2 z-[9998] overflow-hidden"
+      style={{
+        height: "2px",
+        background: "rgba(255, 255, 255, 0.10)",
+        borderRadius: "2px",
+      }}
     >
-      {Array.from({ length: segments }).map((_, i) => (
-        <div
-          key={i}
-          className="w-0.5 h-3.5 transition-all duration-75"
-          style={{
-            backgroundColor: i < filledSegments ? "rgba(13, 13, 12, 0.92)" : "rgba(13, 13, 12, 0.10)",
-            boxShadow: "none",
-          }}
-        />
-      ))}
+      <div
+        aria-hidden
+        className="h-full origin-left"
+        style={{
+          background: "rgba(255, 255, 255, 0.92)",
+          transform: `scaleX(${progress})`,
+          transition: "transform 80ms linear",
+          willChange: "transform",
+        }}
+      />
     </div>
   );
 }

@@ -1,15 +1,56 @@
 import Hero from "@/components/sections/Hero";
 import Robot3D from "@/components/sections/Robot3D";
 import SpeechBubble from "@/components/ui/SpeechBubble";
+import SplineCarousel, { type SplineApp } from "@/components/ui/SplineCarousel";
 import RevealOnScroll from "@/components/ui/RevealOnScroll";
 import { BentoGrid, BentoCard } from "@/components/ui/BentoGrid";
-import StickyScrollSection from "@/components/ui/StickyScrollSection";
+import ProcessSection from "@/components/sections/ProcessSection";
 import SectionDivider from "@/components/ui/SectionDivider";
 import WordReveal from "@/components/ui/WordReveal";
 import { getFeaturedProjects, projects } from "@/data/projects";
 import Link from "next/link";
 
 const SPANS = ["2x2", "1x1", "1x1", "2x1"] as const;
+
+// Add more entries as you build new Spline scenes — each one is its own
+// share URL. The carousel preloads the next one automatically.
+const SHOWCASE_APPS: SplineApp[] = [
+  {
+    url: "https://my.spline.design/dynamiciphonemockup-VE9j43yTdZ9drbZvGuRYaW1V/",
+    name: "FishFresh",
+    eyebrow: "Capstone · 2025",
+    description:
+      "Point your camera at a fish — get its species in seconds. A capstone build that fuses two AI models into one pipeline: YOLOv8 spots the catch, ResNet50 names it. Built for fishers, vendors, and the seafood-curious.",
+    stack: [
+      { name: "Flutter", slug: "flutter", note: "cross-platform UI" },
+      { name: "Firebase", slug: "firebase", note: "auth + realtime" },
+      { name: "YOLOv8", note: "object detection" },
+      { name: "ResNet50", note: "deep classification" },
+    ],
+  },
+  {
+    url: "https://my.spline.design/dynamiciphonemockup-81yuRL9V5HhZOVKpaZ4XqEwp/",
+    name: "Calarian Connect",
+    eyebrow: "Mobile · 2025",
+    description:
+      "The barangay, but in your pocket. Skip the line, skip the paperwork — request documents, track requests, and stay connected to your community without ever leaving the couch.",
+    stack: [
+      { name: "React Native", slug: "react", note: "mobile-first" },
+      { name: "Supabase", slug: "supabase", note: "auth · db · storage" },
+    ],
+  },
+  {
+    url: "https://my.spline.design/dynamiciphonemockup-LkdZHfqZ9GwRpn9Boi8AF35j/",
+    name: "VocabVoyage",
+    eyebrow: "Mobile · 2025",
+    description:
+      "Spelling, but it slaps. A native Android game that turns vocabulary practice into a tap-happy adventure for kids — with offline progress that follows them anywhere.",
+    stack: [
+      { name: "Kotlin", slug: "kotlin", note: "pure native Android" },
+      { name: "SQLite", slug: "sqlite", note: "local-first storage" },
+    ],
+  },
+];
 
 const PROCESS_ITEMS = [
   {
@@ -47,8 +88,23 @@ export default function Home() {
     <>
       <Hero />
 
+      {/* Process — sits directly under the hero as the first narrative beat */}
+      <SectionDivider index="01" total="03" label="How I work" />
+      <ProcessSection
+        heading="A simple, opinionated process."
+        items={PROCESS_ITEMS}
+      />
+
+      {/* Spline 3D scene carousel — full viewport, multi-app showcase */}
+      <section
+        className="relative w-full"
+        style={{ height: "100svh", background: "var(--background)" }}
+      >
+        <SplineCarousel apps={SHOWCASE_APPS} />
+      </section>
+
       {/* Selected work */}
-      <SectionDivider index="01" total="03" label="Selected work" />
+      <SectionDivider index="02" total="03" label="Selected work" />
       <section className="pt-8 pb-32 sm:pb-40">
         <div className="container-custom">
           <RevealOnScroll>
@@ -86,25 +142,6 @@ export default function Home() {
             </BentoGrid>
           </RevealOnScroll>
         </div>
-      </section>
-
-      {/* Process */}
-      <SectionDivider index="02" total="03" label="How I work" />
-      <section className="pt-8 pb-32 sm:pb-40">
-        <StickyScrollSection
-          heading="A simple, opinionated process."
-          items={PROCESS_ITEMS}
-          pinned={
-            <div className="text-center px-8">
-              <div className="mono-label mb-4">Process</div>
-              <p className="text-2xl sm:text-3xl font-semibold tracking-tight text-fg leading-tight">
-                Quietly opinionated.
-                <br />
-                <span className="text-fg-muted">Loudly accountable.</span>
-              </p>
-            </div>
-          }
-        />
       </section>
 
       {/* Footer CTA */}

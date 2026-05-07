@@ -5,7 +5,6 @@ import "./globals.css";
 import FloatingDock from "@/components/ui/FloatingDock";
 import ScrollProgress from "@/components/layout/ScrollProgress";
 import JsonLd from "@/components/JsonLd";
-import CustomCursor from "@/components/transitions/CustomCursor";
 import ConsoleFilter from "@/components/ConsoleFilter";
 import SmoothScroll from "@/components/providers/SmoothScroll";
 import NoiseOverlay from "@/components/ui/NoiseOverlay";
@@ -72,11 +71,10 @@ export default function RootLayout({
       </head>
       <body
         suppressHydrationWarning
-        className={`${spaceGrotesk.variable} ${jetMono.variable} ${bebas.variable} font-sans cursor-none bg-bg`}
+        className={`${spaceGrotesk.variable} ${jetMono.variable} ${bebas.variable} font-sans bg-bg`}
       >
         <ConsoleFilter />
         <NoiseOverlay />
-        <CustomCursor />
         <ScrollProgress />
         <SmoothScroll>
           <main className="min-h-screen">{children}</main>

@@ -273,6 +273,47 @@
   }
 }
 
+/* Certification card — frosted glass with top sheen + hover lift.
+   Defined globally so the page can stay as a server component. */
+.cert-card {
+  position: relative;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.015) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 14px;
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 12px 32px -16px rgba(0, 0, 0, 0.6);
+  isolation: isolate;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 250ms ease, transform 250ms ease, box-shadow 250ms ease;
+}
+.cert-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0) 35%);
+  border-radius: inherit;
+  z-index: 0;
+}
+.cert-card > * {
+  position: relative;
+  z-index: 1;
+}
+.cert-card:hover {
+  border-color: rgba(0, 240, 255, 0.30);
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 18px 40px -16px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(0, 240, 255, 0.12);
+}
+
 @layer utilities {
   .tracking-display { letter-spacing: -0.025em; }
   .text-fg { color: var(--foreground); }
