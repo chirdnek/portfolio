@@ -5,6 +5,7 @@ import SplineCarousel, { type SplineApp } from "@/components/ui/SplineCarousel";
 import RevealOnScroll from "@/components/ui/RevealOnScroll";
 import { BentoGrid, BentoCard } from "@/components/ui/BentoGrid";
 import ProcessSection from "@/components/sections/ProcessSection";
+import AppDevHeading from "@/components/sections/AppDevHeading";
 import SectionDivider from "@/components/ui/SectionDivider";
 import WordReveal from "@/components/ui/WordReveal";
 import { getFeaturedProjects, projects } from "@/data/projects";
@@ -94,6 +95,9 @@ export default function Home() {
         heading="A simple, opinionated process."
         items={PROCESS_ITEMS}
       />
+
+      {/* 3D extruded title bridge */}
+      <AppDevHeading />
 
       {/* Spline 3D scene carousel — full viewport, multi-app showcase */}
       <section

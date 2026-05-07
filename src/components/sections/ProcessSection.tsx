@@ -16,49 +16,80 @@ interface ProcessSectionProps {
   items: ProcessItem[];
 }
 
+/**
+ * ProcessSection
+ *
+ * Desktop (md+): vertical scroll drives a horizontal slide track. The section
+ * is `items.length × 100vh` tall, with a sticky `h-screen` viewport pinned at
+ * the top. Inside, an overflow-hidden wrapper holds a horizontal flex track
+ * whose `x` is bound to the scroll progress.
+ *
+ * Mobile (<md): falls back to a stacked vertical list — horizontal-pinned
+ * scrolling is jarring on touch.
+ */
 export default function ProcessSection({ heading, items }: ProcessSectionProps) {
+  return (
+    <>
+      <div className="hidden md:block">
+        <HorizontalProcess heading={heading} items={items} />
+      </div>
+      <div className="md:hidden">
+        <StackedProcess heading={heading} items={items} />
+      </div>
+    </>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Desktop: horizontal slide track
+ * ───────────────────────────────────────────────────────────────────────── */
+
+function HorizontalProcess({ heading, items }: ProcessSectionProps) {
   const sectionRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: sectionRef,
-    offset: ["start end", "end start"],
+    offset: ["start start", "end end"],
   });
-  // A subtle vertical drift on the hairline cluster — gives the section a sense of tilt
-  const railY = useTransform(scrollYProgress, [0, 1], ["-3%", "3%"]);
+
+  // Track is items.length × 100vw wide. To slide from slide 0 → slide N-1,
+  // translate the track by (N-1) / N of its own width to the left.
+  const xPercent = ((items.length - 1) / items.length) * 100;
+  const x = useTransform(scrollYProgress, [0, 1], ["0%", `-${xPercent}%`]);
 
   return (
-    <section ref={sectionRef} className="relative pt-12 pb-32 sm:pt-20 sm:pb-44">
-      <div className="container-custom">
-        {/* Header — eyebrow over a massive headline */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-y-8 lg:gap-x-12 mb-16 sm:mb-24">
-          <div className="lg:col-span-3">
-            <RevealOnScroll blur={false}>
-              <div className="mono-label text-fg-faint flex items-center gap-3">
-                <span className="inline-block h-px w-10 bg-[color:var(--rule)]" />
-                <span>How I work</span>
-              </div>
-            </RevealOnScroll>
-          </div>
-
-          <div className="lg:col-span-9">
+    <section
+      ref={sectionRef}
+      className="relative"
+      style={{ height: `calc(100vh + ${(items.length - 1) * 60}vh)` }}
+    >
+      <div className="sticky top-0 h-screen overflow-hidden bg-[color:var(--background)]">
+        {/* Header overlay — anchored to the top of the pinned viewport */}
+        <div className="absolute inset-x-0 top-0 z-10 pt-12 sm:pt-20">
+          <div className="container-custom">
             <WordReveal
               text={heading}
               as="h2"
-              className="font-semibold tracking-display text-fg leading-[1.0]"
+              className="font-semibold tracking-display text-fg leading-[1.0] max-w-5xl"
               style={{
-                fontSize: "clamp(2.5rem, 7vw, 5.5rem)",
+                fontSize: "clamp(2rem, 5.2vw, 4.25rem)",
                 letterSpacing: "-0.025em",
               }}
             />
           </div>
         </div>
 
-        {/* Steps — editorial rows with massive numerals */}
+        {/* Horizontal track */}
         <motion.div
-          style={{ y: railY }}
-          className="relative border-t border-[color:var(--rule)]"
+          style={{ x, width: `${items.length * 100}vw` }}
+          className="flex h-full"
         >
           {items.map((item, i) => (
-            <ProcessRow key={item.title} item={item} index={i} />
+            <Slide
+              key={item.title}
+              item={item}
+              index={i}
+              total={items.length}
+            />
           ))}
         </motion.div>
       </div>
@@ -66,54 +97,130 @@ export default function ProcessSection({ heading, items }: ProcessSectionProps) 
   );
 }
 
-function ProcessRow({ item, index }: { item: ProcessItem; index: number }) {
+function Slide({
+  item,
+  index,
+  total,
+}: {
+  item: ProcessItem;
+  index: number;
+  total: number;
+}) {
   return (
-    <RevealOnScroll delay={index * 0.06} blur={false} y={32}>
-      <article className="group relative grid grid-cols-1 md:grid-cols-12 gap-y-5 md:gap-x-10 py-10 sm:py-14 lg:py-16 border-b border-[color:var(--rule)] transition-colors duration-500 hover:bg-[rgba(255,255,255,0.015)]">
-        {/* Numeral — big, editorial, anchored on its baseline */}
-        <div className="md:col-span-3 lg:col-span-4 flex items-start">
-          <span
-            aria-hidden
-            className="font-display block leading-[0.85] text-fg-muted group-hover:text-fg transition-[color,letter-spacing] duration-500 group-hover:tracking-[-0.04em]"
-            style={{
-              fontSize: "clamp(4.5rem, 12vw, 9rem)",
-              letterSpacing: "-0.02em",
-            }}
-          >
-            {String(index + 1).padStart(2, "0")}
-          </span>
-        </div>
-
-        {/* Content column */}
-        <div className="md:col-span-9 lg:col-span-8 lg:max-w-2xl">
-          <div className="mono-label text-fg-faint mb-3 flex items-center gap-2">
-            <span>{item.eyebrow}</span>
+    <article
+      className="h-full flex items-center"
+      style={{ width: "100vw", flexShrink: 0 }}
+    >
+      <div className="container-custom w-full pt-32 sm:pt-44 pb-24">
+        <div className="grid grid-cols-12 gap-x-8 lg:gap-x-12 items-center">
+          {/* Numeral — fills the left half of the slide */}
+          <div className="col-span-12 lg:col-span-5">
+            <span
+              aria-hidden
+              className="font-display block leading-[0.82] text-fg"
+              style={{
+                fontSize: "clamp(6rem, 16vw, 14rem)",
+                letterSpacing: "-0.04em",
+              }}
+            >
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <span className="mono-label text-fg-faint mt-5 block tracking-[0.18em]">
+              {item.eyebrow} ·{" "}
+              <span className="text-fg-muted">
+                {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+              </span>
+            </span>
           </div>
-          <h3
-            className="font-semibold tracking-display text-fg leading-[1.05] mb-5"
-            style={{
-              fontSize: "clamp(1.625rem, 3.4vw, 2.625rem)",
-              letterSpacing: "-0.018em",
-            }}
-          >
-            {item.title}
-          </h3>
-          <p className="text-fg-muted leading-relaxed text-base sm:text-lg">
-            {item.description}
-          </p>
 
-          {/* Hover-revealed accent bar */}
-          <div
-            aria-hidden
-            className="mt-7 h-px origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-700 ease-out"
+          {/* Content — title + description */}
+          <div className="col-span-12 lg:col-span-7 max-w-2xl">
+            <h3
+              className="font-semibold tracking-display text-fg leading-[1.05] mb-6"
+              style={{
+                fontSize: "clamp(1.75rem, 3.4vw, 2.75rem)",
+                letterSpacing: "-0.018em",
+              }}
+            >
+              {item.title}
+            </h3>
+            <p className="text-fg-muted leading-relaxed text-base sm:text-lg">
+              {item.description}
+            </p>
+            <div
+              aria-hidden
+              className="mt-8 h-px origin-left"
+              style={{
+                background:
+                  "linear-gradient(90deg, var(--foreground) 0%, transparent 100%)",
+                maxWidth: "14rem",
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Mobile fallback: simple stacked list
+ * ───────────────────────────────────────────────────────────────────────── */
+
+function StackedProcess({ heading, items }: ProcessSectionProps) {
+  return (
+    <section className="pt-12 pb-24">
+      <div className="container-custom">
+        <div className="mb-12">
+          <WordReveal
+            text={heading}
+            as="h2"
+            className="font-semibold tracking-display text-fg leading-[1.05]"
             style={{
-              background:
-                "linear-gradient(90deg, var(--foreground) 0%, transparent 100%)",
-              maxWidth: "12rem",
+              fontSize: "clamp(2rem, 7vw, 3.25rem)",
+              letterSpacing: "-0.02em",
             }}
           />
         </div>
-      </article>
-    </RevealOnScroll>
+
+        <div className="border-t border-[color:var(--rule)]">
+          {items.map((item, i) => (
+            <RevealOnScroll
+              key={item.title}
+              delay={i * 0.06}
+              blur={false}
+              y={24}
+            >
+              <article className="py-10 border-b border-[color:var(--rule)]">
+                <div className="flex items-baseline gap-5 mb-4">
+                  <span
+                    aria-hidden
+                    className="font-display text-fg-muted leading-none"
+                    style={{
+                      fontSize: "clamp(2.75rem, 14vw, 4.5rem)",
+                      letterSpacing: "-0.02em",
+                    }}
+                  >
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span className="mono-label text-fg-faint">
+                    {item.eyebrow}
+                  </span>
+                </div>
+                <h3
+                  className="font-semibold tracking-display text-fg leading-[1.1] mb-4"
+                  style={{ fontSize: "clamp(1.375rem, 5.5vw, 1.875rem)" }}
+                >
+                  {item.title}
+                </h3>
+                <p className="text-fg-muted leading-relaxed text-base">
+                  {item.description}
+                </p>
+              </article>
+            </RevealOnScroll>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
