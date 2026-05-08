@@ -28,12 +28,12 @@ export default function ProjectsPage() {
       <section className="pt-32 pb-12">
         <div className="container-custom">
           <RevealOnScroll blur={false}>
-            <div className="mono-label mb-4">Selected work — 2024 / 2026</div>
+            <div className="mono-label mb-6">Selected work — 2024 / 2026</div>
           </RevealOnScroll>
 
           <RevealOnScroll>
             <h1
-              className="font-semibold tracking-display leading-[0.95] text-fg max-w-4xl mb-8"
+              className="font-semibold tracking-display leading-[0.95] text-fg max-w-4xl mb-10"
               style={{ fontSize: "clamp(2.5rem, 9vw, 6.5rem)" }}
             >
               Things I&apos;ve shipped<span className="text-accent">.</span>
@@ -41,7 +41,7 @@ export default function ProjectsPage() {
           </RevealOnScroll>
 
           <RevealOnScroll delay={0.1}>
-            <p className="max-w-2xl text-base sm:text-lg text-fg-muted leading-relaxed">
+            <p className="max-w-2xl text-base sm:text-lg text-fg-muted leading-[1.7]">
               A selection of {projects.length} projects across UI/UX, mobile,
               and design systems. Each one was designed end-to-end — research,
               wireframes, visual system, and accessibility-first build.
@@ -50,7 +50,7 @@ export default function ProjectsPage() {
 
           {/* Tools chips */}
           <RevealOnScroll delay={0.2} blur={false}>
-            <div className="mt-10 flex flex-wrap items-center gap-2">
+            <div className="mt-12 flex flex-wrap items-center gap-2">
               <span className="mono-label mr-2">Tools —</span>
               {allTags.map((tag) => (
                 <span

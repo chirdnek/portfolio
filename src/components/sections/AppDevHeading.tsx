@@ -23,7 +23,8 @@ export default function AppDevHeading() {
       ref={ref}
       className="relative w-full overflow-hidden flex items-center justify-center"
       style={{
-        minHeight: "55svh",
+        minHeight: "20svh",
+        paddingBlock: "clamp(3rem, 8vh, 6rem)",
         perspective: "1400px",
         background: "var(--background)",
       }}
@@ -46,25 +47,12 @@ export default function AppDevHeading() {
         >
           Application Developments
         </h2>
-
-        {/* Atmospheric bottom haze — sells the slab as a real surface */}
-        <div
-          aria-hidden
-          className="absolute left-1/2 -translate-x-1/2 pointer-events-none"
-          style={{
-            bottom: "-3rem",
-            width: "55%",
-            height: "4rem",
-            background:
-              "radial-gradient(ellipse at center, rgba(255,255,255,0.06) 0%, transparent 70%)",
-            filter: "blur(18px)",
-          }}
-        />
       </motion.div>
 
       <style jsx>{`
         .text-3d {
           color: #f5f5f5;
+          /* Pure stepped extrusion — no soft glow / cast shadow */
           text-shadow:
             1px 1px 0 #d4d4d4,
             2px 2px 0 #b0b0b0,
@@ -74,8 +62,7 @@ export default function AppDevHeading() {
             6px 6px 0 #262626,
             7px 7px 0 #181818,
             8px 8px 0 #0c0c0c,
-            9px 9px 0 #060606,
-            12px 14px 22px rgba(0, 0, 0, 0.65);
+            9px 9px 0 #060606;
         }
       `}</style>
     </section>

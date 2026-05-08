@@ -73,7 +73,7 @@ export default async function ProjectDetailPage({ params }: Props) {
 
           <RevealOnScroll>
             <h1
-              className="font-semibold tracking-display leading-[0.95] text-fg mb-8 max-w-4xl"
+              className="font-semibold tracking-display leading-[0.95] text-fg mb-10 max-w-4xl"
               style={{ fontSize: "clamp(2.5rem, 8vw, 5.5rem)" }}
             >
               {project.title}
@@ -83,7 +83,7 @@ export default async function ProjectDetailPage({ params }: Props) {
 
           {project.description && (
             <RevealOnScroll delay={0.1}>
-              <p className="text-xl sm:text-2xl text-fg leading-snug font-light max-w-3xl">
+              <p className="text-xl sm:text-2xl text-fg-muted leading-[1.55] font-light max-w-3xl tracking-[-0.005em]">
                 {project.description}
               </p>
             </RevealOnScroll>

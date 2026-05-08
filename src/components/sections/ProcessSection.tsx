@@ -60,7 +60,7 @@ function HorizontalProcess({ heading, items }: ProcessSectionProps) {
     <section
       ref={sectionRef}
       className="relative"
-      style={{ height: `calc(100vh + ${(items.length - 1) * 60}vh)` }}
+      style={{ height: `calc(100vh + ${(items.length - 1) * 40}vh)` }}
     >
       <div className="sticky top-0 h-screen overflow-hidden bg-[color:var(--background)]">
         {/* Header overlay — anchored to the top of the pinned viewport */}
