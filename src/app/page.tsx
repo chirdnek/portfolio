@@ -3,16 +3,12 @@ import Robot3D from "@/components/sections/Robot3D";
 import SpeechBubble from "@/components/ui/SpeechBubble";
 import SplineCarousel, { type SplineApp } from "@/components/ui/SplineCarousel";
 import RevealOnScroll from "@/components/ui/RevealOnScroll";
-import { BentoGrid, BentoCard } from "@/components/ui/BentoGrid";
 import ProcessSection from "@/components/sections/ProcessSection";
 import AppDevHeading from "@/components/sections/AppDevHeading";
-import WaveTransition from "@/components/sections/WaveTransition";
+import ProjectCanvas from "@/components/projects/ProjectCanvas";
 import SectionDivider from "@/components/ui/SectionDivider";
 import WordReveal from "@/components/ui/WordReveal";
-import { getFeaturedProjects, projects } from "@/data/projects";
 import Link from "next/link";
-
-const SPANS = ["2x2", "1x1", "1x1", "2x1"] as const;
 
 // Add more entries as you build new Spline scenes — each one is its own
 // share URL. The carousel preloads the next one automatically.
@@ -82,10 +78,6 @@ const PROCESS_ITEMS = [
 ];
 
 export default function Home() {
-  const featured = getFeaturedProjects();
-  const rest = projects.filter((p) => !featured.includes(p));
-  const display = [...featured, ...rest].slice(0, 4);
-
   return (
     <>
       <Hero />
@@ -96,9 +88,6 @@ export default function Home() {
         heading="A simple, opinionated process."
         items={PROCESS_ITEMS}
       />
-
-      {/* Scroll-driven wave transition between Process and AppDev */}
-      <WaveTransition />
 
       {/* 3D extruded title bridge */}
       <AppDevHeading />
@@ -111,45 +100,10 @@ export default function Home() {
         <SplineCarousel apps={SHOWCASE_APPS} />
       </section>
 
-      {/* Selected work */}
-      <SectionDivider index="02" total="03" label="Selected work" />
-      <section className="pt-8 pb-32 sm:pb-40">
-        <div className="container-custom">
-          <RevealOnScroll>
-            <div className="flex items-end justify-between mb-12 gap-4">
-              <h2
-                className="font-semibold tracking-display text-fg max-w-3xl leading-[1.05]"
-                style={{ fontSize: "clamp(2rem, 5.5vw, 4rem)" }}
-              >
-                A few things I&apos;ve shipped recently.
-              </h2>
-              <Link
-                href="/projects"
-                className="link-underline text-sm shrink-0 hidden sm:inline-block"
-              >
-                View all →
-              </Link>
-            </div>
-          </RevealOnScroll>
-
-          <RevealOnScroll delay={0.15} blur={false}>
-            <BentoGrid>
-              {display.map((p, i) => (
-                <BentoCard
-                  key={p.slug}
-                  span={SPANS[i] ?? "1x1"}
-                  href={`/projects/${p.slug}`}
-                  eyebrow={p.featured ? "Featured" : "Project"}
-                  title={p.title}
-                  description={p.description}
-                  tags={p.tags}
-                  image={p.image}
-                  index={i}
-                />
-              ))}
-            </BentoGrid>
-          </RevealOnScroll>
-        </div>
+      {/* Pan/zoom project canvas — full-bleed 3×3 grid of project artwork */}
+      <SectionDivider index="02" total="03" label="Browse the work" />
+      <section className="relative w-full">
+        <ProjectCanvas />
       </section>
 
       {/* Footer CTA */}

@@ -1,17 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { projects } from "@/data/projects";
-import { BentoGrid, BentoCard, type BentoSpan } from "@/components/ui/BentoGrid";
 import RevealOnScroll from "@/components/ui/RevealOnScroll";
 import SectionDivider from "@/components/ui/SectionDivider";
+import ProjectCanvas from "@/components/projects/ProjectCanvas";
 
 export const metadata: Metadata = {
   title: "Work — Kendrick Serrano",
   description:
     "Selected UI/UX design work — mobile apps, design systems, and accessible web experiences designed in Figma and shipped in Flutter and React.",
 };
-
-const SPANS: BentoSpan[] = ["2x2", "1x1", "1x1", "2x1"];
 
 export default function ProjectsPage() {
   // All unique tags across projects, sorted by frequency
@@ -67,33 +65,9 @@ export default function ProjectsPage() {
 
       <SectionDivider index="01" total="01" label="All projects" />
 
-      <section className="pt-8 pb-32 sm:pb-48">
-        <div className="container-custom">
-          {projects.length === 0 ? (
-            <div className="border border-subtle rounded-2xl py-24 text-center">
-              <div className="mono-label mb-3">Coming soon</div>
-              <p className="text-fg-muted">New work is in the studio.</p>
-            </div>
-          ) : (
-            <RevealOnScroll blur={false}>
-              <BentoGrid>
-                {projects.map((p, i) => (
-                  <BentoCard
-                    key={p.slug}
-                    span={SPANS[i] ?? "1x1"}
-                    href={`/projects/${p.slug}`}
-                    eyebrow={p.role ?? (p.featured ? "Featured" : "Project")}
-                    title={p.title}
-                    description={p.description}
-                    tags={p.tags}
-                    image={p.image}
-                    index={i}
-                  />
-                ))}
-              </BentoGrid>
-            </RevealOnScroll>
-          )}
-        </div>
+      {/* Pan/zoom canvas — full-bleed 3×3 grid of project artwork */}
+      <section className="relative w-full">
+        <ProjectCanvas />
       </section>
 
       {/* Footer CTA */}
